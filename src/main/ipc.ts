@@ -16,9 +16,7 @@ export function registerIpc(): void {
     });
   });
 
-  ipcMain.handle("wine:delete", (_event, id: string) => {
-    deleteVersion(id);
-  });
+  ipcMain.handle("wine:delete", (_event, id: string) => deleteVersion(id));
 
   ipcMain.handle("storage:usage", () => getUsage());
   ipcMain.handle("storage:clear-cache", () => clearCache());

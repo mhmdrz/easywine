@@ -1,5 +1,12 @@
 import { net } from "electron";
-import { createWriteStream, promises as fsp, renameSync, rmSync } from "fs";
+import { spawn } from "child_process";
+import { createHash } from "crypto";
+import {
+  createReadStream,
+  createWriteStream,
+  promises as fsp,
+  renameSync,
+} from "fs";
 import { join } from "path";
 import { cacheDir, downloadsDir } from "./appPaths";
 import { findVersion, getCatalog } from "./wineCatalog";
@@ -12,16 +19,79 @@ function destFor(id: string): string {
   return join(downloadsDir(), `${id}.tar.xz`);
 }
 
-export async function listInstalled(): Promise<string[]> {
-  const files = await fsp.readdir(downloadsDir()).catch(() => [] as string[]);
-  return files
-    .filter((f) => f.endsWith(".tar.xz"))
-    .map((f) => f.replace(/\.tar\.xz$/, ""));
+function versionFolderFor(id: string): string {
+  return join(downloadsDir(), id.replace(/^wine-/, ""));
 }
 
-export function deleteVersion(id: string): void {
+export async function listInstalled(): Promise<string[]> {
+  const entries = await fsp
+    .readdir(downloadsDir(), { withFileTypes: true })
+    .catch(() => []);
+  return entries.filter((e) => e.isDirectory()).map((e) => `wine-${e.name}`);
+}
+
+export async function deleteVersion(id: string): Promise<void> {
   if (!isValidId(id)) return;
-  rmSync(destFor(id), { force: true });
+  await fsp.rm(destFor(id), { force: true });
+  await fsp.rm(versionFolderFor(id), {
+    recursive: true,
+    force: true,
+    maxRetries: 3,
+  });
+}
+
+function sha512Of(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha512");
+    const stream = createReadStream(filePath);
+    stream.on("error", reject);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
+function runTar(tarPath: string, outDir: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("tar", ["-xf", tarPath, "-C", outDir]);
+    let stderr = "";
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`tar exited with code ${code}: ${stderr.trim()}`));
+    });
+  });
+}
+
+async function extractVersion(id: string): Promise<void> {
+  const tarPath = destFor(id);
+  const staging = join(cacheDir(), `${id}-extract`);
+  await fsp.rm(staging, { recursive: true, force: true, maxRetries: 3 });
+  await fsp.mkdir(staging, { recursive: true });
+
+  await runTar(tarPath, staging);
+
+  const entries = await fsp.readdir(staging);
+  const root = entries.length === 1 ? join(staging, entries[0]) : staging;
+
+  const target = versionFolderFor(id);
+  await fsp.rm(target, { recursive: true, force: true, maxRetries: 3 });
+  await fsp.rename(root, target);
+  await fsp.rm(staging, { recursive: true, force: true, maxRetries: 3 });
+
+  await fsp.rm(tarPath, { force: true });
+}
+
+async function verify(tarPath: string, expected?: string): Promise<void> {
+  if (!expected) return;
+  const actual = await sha512Of(tarPath);
+  if (actual !== expected.toLowerCase()) {
+    throw new Error(
+      `Checksum mismatch: expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…`,
+    );
+  }
 }
 
 export async function downloadVersion(
@@ -68,15 +138,29 @@ export async function downloadVersion(
 
       response.on("end", () => {
         file.end(() => {
-          renameSync(partial, dest);
-          onProgress(100);
-          resolve();
+          try {
+            renameSync(partial, dest);
+          } catch (error) {
+            reject(error as Error);
+            return;
+          }
+          verify(dest, version.sha512)
+            .then(() => extractVersion(id))
+            .then(() => {
+              onProgress(100);
+              resolve();
+            })
+            .catch(async (error) => {
+              // Bad or half-written download: drop it so a retry starts clean.
+              await fsp.rm(dest, { force: true });
+              reject(error);
+            });
         });
       });
 
       response.on("error", (error) => {
         file.destroy();
-        rmSync(partial, { force: true });
+        void fsp.rm(partial, { force: true });
         reject(error);
       });
     });

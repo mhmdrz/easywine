@@ -57,7 +57,22 @@ function compareDesc(a: WineVersion, b: WineVersion): number {
 const ROW_RE =
   /href="(wine-\d[^"]*\.tar\.xz)">wine-[^<]+<\/a><\/td>\s*<td>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/g;
 
-function parseSeries(html: string, seriesUrl: string): WineVersion[] {
+/** Parses `<sha512>  wine-<version>.tar.xz` lines into a filename → hash map. */
+function parseSums(text: string): Map<string, string> {
+  const sums = new Map<string, string>();
+  const re = /^([0-9a-f]{128})\s+(wine-\S+\.tar\.xz)$/gim;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    sums.set(match[2], match[1].toLowerCase());
+  }
+  return sums;
+}
+
+function parseSeries(
+  html: string,
+  seriesUrl: string,
+  sums: Map<string, string>,
+): WineVersion[] {
   const versions: WineVersion[] = [];
   let match: RegExpExecArray | null;
   ROW_RE.lastIndex = 0;
@@ -74,6 +89,7 @@ function parseSeries(html: string, seriesUrl: string): WineVersion[] {
       releaseDate: dateRaw.trim().split(" ")[0],
       size: sizeRaw.trim(),
       url: seriesUrl + file,
+      sha512: sums.get(file),
     });
   }
   return versions;
@@ -115,7 +131,10 @@ async function scrape(): Promise<WineVersion[]> {
   const perSeries = await mapLimit(series, 6, async (s) => {
     const url = `${SOURCE_INDEX}${s}/`;
     try {
-      return parseSeries(await fetchText(url), url);
+      const html = await fetchText(url);
+      // sha512sums.asc is a signed manifest of every tarball in the series.
+      const sumsText = await fetchText(`${url}sha512sums.asc`).catch(() => "");
+      return parseSeries(html, url, parseSums(sumsText));
     } catch {
       return [] as WineVersion[];
     }

@@ -19,6 +19,8 @@ export interface WineVersion {
   size: string;
   /** Direct download URL (resolved in the main process). */
   url: string;
+  /** Expected SHA-512 of the tarball, from WineHQ's sha512sums.asc (if available). */
+  sha512?: string;
 }
 
 export type DownloadStatus = "available" | "downloading" | "installed" | "error";
