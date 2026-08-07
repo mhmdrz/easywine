@@ -1,7 +1,7 @@
 {
   "name": "easywine",
   "version": "0.0.1",
-  "description": "a gui for wine",
+  "description": "A GUI for Wine on macOS to easily control and create new Wine configurations and their settings, powered by Electron",
   "homepage": "https://github.com/mhmdrz/easywine#readme",
   "bugs": {
     "url": "https://github.com/mhmdrz/easywine/issues"
@@ -12,10 +12,34 @@
   },
   "license": "MIT",
   "author": "Mohammadreza Abdolalipour",
+  "type": "module",
+  "main": "./out/main/index.js",
   "scripts": {
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
   "devDependencies": {
-    "electron": "^43.3.0"
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^43.3.0",
+    "electron-vite": "^2.3.0",
+    "postcss": "^8.4.49",
+    "sass": "^1.83.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
   }
 }
