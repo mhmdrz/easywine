@@ -1,0 +1,47 @@
+@use "../styles/variables" as *;
+
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  background-color: rgba($color-black, 0.6);
+}
+
+.modal {
+  @apply w-full max-w-md;
+
+  &__field {
+    @apply mt-4 flex flex-col gap-1.5;
+  }
+
+  &__label {
+    @apply text-sm font-medium;
+    color: rgba($text, 0.7);
+  }
+
+  &__input {
+    @apply rounded-lg px-3 py-2 text-sm;
+    background-color: $color-gray-800;
+    color: $text;
+    border: 1px solid $border;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+      outline: none;
+      border-color: $color-accent;
+    }
+  }
+
+  &__select {
+    @apply relative;
+
+    select.modal__input {
+      @apply w-full pr-10;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+  }
+
+  &__chevron {
+    @apply pointer-events-none absolute right-3 top-1/2 -translate-y-1/2;
+    color: rgba($text, 0.6);
+  }
+}

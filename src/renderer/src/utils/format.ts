@@ -1,3 +1,8 @@
+export function formatVersionId(id: string): string {
+  const match = /^wine-(.+)-(devel|staging|stable)$/.exec(id);
+  return match ? `${match[1]} · ${match[2]}` : id.replace(/^wine-/, "");
+}
+
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 
 export function formatBytes(bytes: number): string {

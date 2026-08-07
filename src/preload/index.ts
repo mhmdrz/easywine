@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
-import type { StorageUsage, WineProgress, WineVersion } from "@shared/wine";
+import type {
+  StorageUsage,
+  WineArch,
+  WineConfig,
+  WineProgress,
+  WineVersion,
+} from "@shared/wine";
 
 // The API surface exposed to the renderer. Extend this as the
 // wine-management features (prefixes, running apps, config) come online.
@@ -31,6 +37,15 @@ export const api = {
         ipcRenderer.removeListener("wine:progress", handler);
       };
     },
+  },
+  config: {
+    list: (): Promise<WineConfig[]> => ipcRenderer.invoke("config:list"),
+    create: (
+      name: string,
+      wineVersion: string,
+      arch: WineArch,
+    ): Promise<WineConfig> =>
+      ipcRenderer.invoke("config:create", name, wineVersion, arch),
   },
   storage: {
     usage: (): Promise<StorageUsage> => ipcRenderer.invoke("storage:usage"),

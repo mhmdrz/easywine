@@ -4,18 +4,40 @@ import { join } from "path";
 import type { WineChannel, WineVersion } from "@shared/wine";
 import { cacheDir } from "./appPaths";
 
-const SOURCE_INDEX = "https://dl.winehq.org/wine/source/";
+const RELEASES_API =
+  "https://api.github.com/repos/Gcenx/macOS_Wine_builds/releases?per_page=100";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+const ASSET_RE = /^wine-(devel|staging|stable)-(.+)-osx64\.tar\.xz$/;
+
+const CHANNEL_FOR: Record<string, WineChannel> = {
+  stable: "stable",
+  devel: "development",
+  staging: "staging",
+};
+
+interface GithubAsset {
+  name: string;
+  size: number;
+  browser_download_url: string;
+  digest: string | null;
+}
+interface GithubRelease {
+  published_at: string;
+  assets: GithubAsset[];
+}
 
 let memoryCatalog: WineVersion[] | null = null;
 
 function cacheFile(): string {
-  return join(cacheDir(), "catalog.json");
+  return join(cacheDir(), "catalog-v2.json");
 }
 
-function fetchText(url: string): Promise<string> {
+function fetchJson<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const request = net.request(url);
+    request.setHeader("User-Agent", "EasyWine");
+    request.setHeader("Accept", "application/vnd.github+json");
     request.on("response", (response) => {
       const status = response.statusCode ?? 0;
       if (status >= 300) {
@@ -24,7 +46,13 @@ function fetchText(url: string): Promise<string> {
       }
       const chunks: Buffer[] = [];
       response.on("data", (chunk: Buffer) => chunks.push(chunk));
-      response.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      response.on("end", () => {
+        try {
+          resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as T);
+        } catch (err) {
+          reject(err as Error);
+        }
+      });
       response.on("error", reject);
     });
     request.on("error", reject);
@@ -32,15 +60,13 @@ function fetchText(url: string): Promise<string> {
   });
 }
 
-function channelFor(version: string): WineChannel {
-  return /^\d+\.0$/.test(version) ? "stable" : "development";
+function formatSize(bytes: number): string {
+  const mib = bytes / (1024 * 1024);
+  return `${mib.toFixed(1)} MiB`;
 }
 
 function versionKey(version: string): number[] {
-  const [core, rc] = version.split("-rc");
-  const parts = core.split(".").map((n) => parseInt(n, 10) || 0);
-  parts.push(rc ? parseInt(rc, 10) : Number.MAX_SAFE_INTEGER);
-  return parts;
+  return version.split(".").map((n) => parseInt(n, 10) || 0);
 }
 
 function compareDesc(a: WineVersion, b: WineVersion): number {
@@ -51,96 +77,40 @@ function compareDesc(a: WineVersion, b: WineVersion): number {
     const diff = (kb[i] ?? 0) - (ka[i] ?? 0);
     if (diff !== 0) return diff;
   }
-  return 0;
-}
-
-const ROW_RE =
-  /href="(wine-\d[^"]*\.tar\.xz)">wine-[^<]+<\/a><\/td>\s*<td>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/g;
-
-/** Parses `<sha512>  wine-<version>.tar.xz` lines into a filename → hash map. */
-function parseSums(text: string): Map<string, string> {
-  const sums = new Map<string, string>();
-  const re = /^([0-9a-f]{128})\s+(wine-\S+\.tar\.xz)$/gim;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(text)) !== null) {
-    sums.set(match[2], match[1].toLowerCase());
-  }
-  return sums;
-}
-
-function parseSeries(
-  html: string,
-  seriesUrl: string,
-  sums: Map<string, string>,
-): WineVersion[] {
-  const versions: WineVersion[] = [];
-  let match: RegExpExecArray | null;
-  ROW_RE.lastIndex = 0;
-  while ((match = ROW_RE.exec(html)) !== null) {
-    const [, file, dateRaw, sizeRaw] = match;
-    const version = file.replace(/^wine-/, "").replace(/\.tar\.xz$/, "");
-    const major = parseInt(version, 10);
-    if (Number.isNaN(major)) continue;
-    versions.push({
-      id: `wine-${version}`,
-      version,
-      major,
-      channel: channelFor(version),
-      releaseDate: dateRaw.trim().split(" ")[0],
-      size: sizeRaw.trim(),
-      url: seriesUrl + file,
-      sha512: sums.get(file),
-    });
-  }
-  return versions;
-}
-
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let cursor = 0;
-  async function worker(): Promise<void> {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await fn(items[index]);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, worker),
-  );
-  return results;
+  const order: Record<WineChannel, number> = {
+    stable: 0,
+    development: 1,
+    staging: 2,
+  };
+  return order[a.channel] - order[b.channel];
 }
 
 async function scrape(): Promise<WineVersion[]> {
-  const index = await fetchText(SOURCE_INDEX);
+  const releases = await fetchJson<GithubRelease[]>(RELEASES_API);
+  const versions: WineVersion[] = [];
 
-  const seriesRe = /href="(\d+\.(?:0|x))\/"/g;
-  const series: string[] = [];
-  const seen = new Set<string>();
-  let m: RegExpExecArray | null;
-  while ((m = seriesRe.exec(index)) !== null) {
-    if (!seen.has(m[1])) {
-      seen.add(m[1]);
-      series.push(m[1]);
+  for (const release of releases) {
+    const date = release.published_at?.split("T")[0] ?? "";
+    for (const asset of release.assets ?? []) {
+      const match = ASSET_RE.exec(asset.name);
+      if (!match) continue;
+      const [, channelToken, version] = match;
+      const major = parseInt(version, 10);
+      if (Number.isNaN(major)) continue;
+      versions.push({
+        id: `wine-${version}-${channelToken}`,
+        version,
+        major,
+        channel: CHANNEL_FOR[channelToken],
+        releaseDate: date,
+        size: formatSize(asset.size),
+        url: asset.browser_download_url,
+        sha256: asset.digest?.replace(/^sha256:/, ""),
+      });
     }
   }
 
-  const perSeries = await mapLimit(series, 6, async (s) => {
-    const url = `${SOURCE_INDEX}${s}/`;
-    try {
-      const html = await fetchText(url);
-      // sha512sums.asc is a signed manifest of every tarball in the series.
-      const sumsText = await fetchText(`${url}sha512sums.asc`).catch(() => "");
-      return parseSeries(html, url, parseSums(sumsText));
-    } catch {
-      return [] as WineVersion[];
-    }
-  });
-
-  return perSeries.flat().sort(compareDesc);
+  return versions.sort(compareDesc);
 }
 
 async function readDiskCache(): Promise<WineVersion[] | null> {

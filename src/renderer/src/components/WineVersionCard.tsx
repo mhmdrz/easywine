@@ -13,6 +13,7 @@ interface WineVersionCardProps {
 const CHANNEL_BADGE: Record<WineChannel, string> = {
   stable: "bg-emerald-500/15 text-emerald-400",
   development: "bg-sky-500/15 text-sky-400",
+  staging: "bg-amber-500/15 text-amber-400",
 };
 
 function formatDate(iso: string): string {

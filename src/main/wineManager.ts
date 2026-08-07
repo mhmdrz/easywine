@@ -2,6 +2,7 @@ import { net } from "electron";
 import { spawn } from "child_process";
 import { createHash } from "crypto";
 import {
+  constants as fsConstants,
   createReadStream,
   createWriteStream,
   promises as fsp,
@@ -12,37 +13,57 @@ import { cacheDir, downloadsDir } from "./appPaths";
 import { findVersion, getCatalog } from "./wineCatalog";
 
 function isValidId(id: string): boolean {
-  return /^wine-\d+(\.\d+)*(-rc\d+)?$/.test(id);
+  return /^wine-\d+(\.\d+)*(_\d+)?-(devel|staging|stable)$/.test(id);
 }
 
-function destFor(id: string): string {
-  return join(downloadsDir(), `${id}.tar.xz`);
+function installDir(id: string): string {
+  return join(downloadsDir(), id);
 }
 
-function versionFolderFor(id: string): string {
-  return join(downloadsDir(), id.replace(/^wine-/, ""));
+function tarFor(id: string): string {
+  return join(cacheDir(), `${id}.tar.xz`);
+}
+
+async function isExecutable(path: string): Promise<boolean> {
+  return fsp
+    .access(path, fsConstants.X_OK)
+    .then(() => true)
+    .catch(() => false);
+}
+
+export async function resolveWineboot(
+  id: string,
+): Promise<{ cmd: string; args: string[] } | null> {
+  const bin = join(installDir(id), "Contents", "Resources", "wine", "bin");
+  const wineboot = join(bin, "wineboot");
+  if (await isExecutable(wineboot)) return { cmd: wineboot, args: [] };
+  const wine = join(bin, "wine");
+  if (await isExecutable(wine)) return { cmd: wine, args: ["wineboot"] };
+  return null;
 }
 
 export async function listInstalled(): Promise<string[]> {
   const entries = await fsp
     .readdir(downloadsDir(), { withFileTypes: true })
     .catch(() => []);
-  return entries.filter((e) => e.isDirectory()).map((e) => `wine-${e.name}`);
+  return entries
+    .filter((e) => e.isDirectory() && isValidId(e.name))
+    .map((e) => e.name);
 }
 
 export async function deleteVersion(id: string): Promise<void> {
   if (!isValidId(id)) return;
-  await fsp.rm(destFor(id), { force: true });
-  await fsp.rm(versionFolderFor(id), {
+  await fsp.rm(tarFor(id), { force: true });
+  await fsp.rm(installDir(id), {
     recursive: true,
     force: true,
     maxRetries: 3,
   });
 }
 
-function sha512Of(filePath: string): Promise<string> {
+function sha256Of(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const hash = createHash("sha512");
+    const hash = createHash("sha256");
     const stream = createReadStream(filePath);
     stream.on("error", reject);
     stream.on("data", (chunk) => hash.update(chunk));
@@ -66,17 +87,18 @@ function runTar(tarPath: string, outDir: string): Promise<void> {
 }
 
 async function extractVersion(id: string): Promise<void> {
-  const tarPath = destFor(id);
+  const tarPath = tarFor(id);
   const staging = join(cacheDir(), `${id}-extract`);
   await fsp.rm(staging, { recursive: true, force: true, maxRetries: 3 });
   await fsp.mkdir(staging, { recursive: true });
 
   await runTar(tarPath, staging);
 
+  // The tarball unpacks to a single "Wine <Channel>.app" bundle.
   const entries = await fsp.readdir(staging);
   const root = entries.length === 1 ? join(staging, entries[0]) : staging;
 
-  const target = versionFolderFor(id);
+  const target = installDir(id);
   await fsp.rm(target, { recursive: true, force: true, maxRetries: 3 });
   await fsp.rename(root, target);
   await fsp.rm(staging, { recursive: true, force: true, maxRetries: 3 });
@@ -86,7 +108,7 @@ async function extractVersion(id: string): Promise<void> {
 
 async function verify(tarPath: string, expected?: string): Promise<void> {
   if (!expected) return;
-  const actual = await sha512Of(tarPath);
+  const actual = await sha256Of(tarPath);
   if (actual !== expected.toLowerCase()) {
     throw new Error(
       `Checksum mismatch: expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…`,
@@ -108,7 +130,7 @@ export async function downloadVersion(
     throw new Error(`Unknown Wine version: ${id}`);
   }
 
-  const dest = destFor(id);
+  const dest = tarFor(id);
   const partial = join(cacheDir(), `${id}.tar.xz.part`);
 
   return new Promise((resolve, reject) => {
@@ -144,7 +166,7 @@ export async function downloadVersion(
             reject(error as Error);
             return;
           }
-          verify(dest, version.sha512)
+          verify(dest, version.sha256)
             .then(() => extractVersion(id))
             .then(() => {
               onProgress(100);
