@@ -9,8 +9,11 @@ import {
   renameSync,
 } from "fs";
 import { join } from "path";
+import type { DownloadStage } from "@shared/wine";
 import { cacheDir, downloadsDir } from "./appPaths";
 import { findVersion, getCatalog } from "./wineCatalog";
+
+type ProgressFn = (stage: DownloadStage, percent: number) => void;
 
 function isValidId(id: string): boolean {
   return /^wine-\d+(\.\d+)*(_\d+)?-(devel|staging|stable)$/.test(id);
@@ -61,12 +64,23 @@ export async function deleteVersion(id: string): Promise<void> {
   });
 }
 
-function sha256Of(filePath: string): Promise<string> {
+function sha256Of(
+  filePath: string,
+  total: number,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = createHash("sha256");
     const stream = createReadStream(filePath);
+    let read = 0;
     stream.on("error", reject);
-    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("data", (chunk) => {
+      hash.update(chunk);
+      read += chunk.length;
+      if (total > 0 && onProgress) {
+        onProgress(Math.min(Math.round((read / total) * 100), 100));
+      }
+    });
     stream.on("end", () => resolve(hash.digest("hex")));
   });
 }
@@ -94,7 +108,6 @@ async function extractVersion(id: string): Promise<void> {
 
   await runTar(tarPath, staging);
 
-  // The tarball unpacks to a single "Wine <Channel>.app" bundle.
   const entries = await fsp.readdir(staging);
   const root = entries.length === 1 ? join(staging, entries[0]) : staging;
 
@@ -106,9 +119,14 @@ async function extractVersion(id: string): Promise<void> {
   await fsp.rm(tarPath, { force: true });
 }
 
-async function verify(tarPath: string, expected?: string): Promise<void> {
+async function verify(
+  tarPath: string,
+  expected: string | undefined,
+  onProgress: (percent: number) => void,
+): Promise<void> {
   if (!expected) return;
-  const actual = await sha256Of(tarPath);
+  const { size } = await fsp.stat(tarPath);
+  const actual = await sha256Of(tarPath, size, onProgress);
   if (actual !== expected.toLowerCase()) {
     throw new Error(
       `Checksum mismatch: expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…`,
@@ -116,10 +134,39 @@ async function verify(tarPath: string, expected?: string): Promise<void> {
   }
 }
 
-export async function downloadVersion(
+interface ActiveDownload {
+  stage: DownloadStage;
+  progress: number;
+}
+
+const active = new Map<string, ActiveDownload>();
+const inflight = new Map<string, Promise<void>>();
+
+export function getActiveDownloads(): Array<{ id: string } & ActiveDownload> {
+  return Array.from(active, ([id, a]) => ({ id, ...a }));
+}
+
+export function downloadVersion(
   id: string,
-  onProgress: (percent: number) => void,
+  onProgress: ProgressFn,
 ): Promise<void> {
+  const existing = inflight.get(id);
+  if (existing) return existing;
+
+  const report: ProgressFn = (stage, percent) => {
+    active.set(id, { stage, progress: percent });
+    onProgress(stage, percent);
+  };
+
+  const promise = runDownload(id, report).finally(() => {
+    inflight.delete(id);
+    active.delete(id);
+  });
+  inflight.set(id, promise);
+  return promise;
+}
+
+async function runDownload(id: string, onProgress: ProgressFn): Promise<void> {
   if (!isValidId(id)) {
     throw new Error(`Invalid version id: ${id}`);
   }
@@ -154,7 +201,10 @@ export async function downloadVersion(
         received += chunk.length;
         file.write(chunk);
         if (total > 0) {
-          onProgress(Math.min(Math.round((received / total) * 100), 100));
+          onProgress(
+            "downloading",
+            Math.min(Math.round((received / total) * 100), 100),
+          );
         }
       });
 
@@ -166,12 +216,12 @@ export async function downloadVersion(
             reject(error as Error);
             return;
           }
-          verify(dest, version.sha256)
-            .then(() => extractVersion(id))
+          verify(dest, version.sha256, (p) => onProgress("verifying", p))
             .then(() => {
-              onProgress(100);
-              resolve();
+              onProgress("extracting", 100);
+              return extractVersion(id);
             })
+            .then(resolve)
             .catch(async (error) => {
               // Bad or half-written download: drop it so a retry starts clean.
               await fsp.rm(dest, { force: true });

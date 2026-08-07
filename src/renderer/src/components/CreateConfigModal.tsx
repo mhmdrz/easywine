@@ -43,7 +43,9 @@ function CreateConfigModal({
       onCreated(config);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create config.");
+      setError(
+        err instanceof Error ? err.message : "Could not create instance.",
+      );
       setSubmitting(false);
     }
   };
@@ -58,7 +60,7 @@ function CreateConfigModal({
       <form className="modal card" onSubmit={handleSubmit}>
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-xl font-semibold text-wine-light">
-            New configuration
+            New instance
           </h2>
           <button
             type="button"

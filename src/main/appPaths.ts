@@ -19,6 +19,10 @@ export function configsDir(): string {
   return ensure(join(appDir(), "configs"));
 }
 
+export function prefixesDir(): string {
+  return ensure(join(appDir(), "prefixes"));
+}
+
 export function cacheDir(): string {
   return ensure(join(appDir(), "cache"));
 }

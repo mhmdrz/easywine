@@ -25,6 +25,9 @@ export const api = {
       ipcRenderer.invoke("wine:refresh-catalog"),
     listInstalled: (): Promise<string[]> =>
       ipcRenderer.invoke("wine:list-installed"),
+    /** In-flight downloads, so the UI can rehydrate after navigation. */
+    activeDownloads: (): Promise<WineProgress[]> =>
+      ipcRenderer.invoke("wine:active-downloads"),
     download: (id: string): Promise<void> =>
       ipcRenderer.invoke("wine:download", id),
     remove: (id: string): Promise<void> => ipcRenderer.invoke("wine:delete", id),

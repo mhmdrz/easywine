@@ -6,12 +6,11 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
-  /** `end` makes the index route only match exactly "/". */
   end?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Configurations", icon: "folder", end: true },
+  { to: "/", label: "Instances", icon: "folder", end: true },
   { to: "/downloads", label: "Downloads", icon: "download" },
   { to: "/settings", label: "Settings", icon: "settings" },
 ];

@@ -3,7 +3,12 @@ import type { WineArch } from "@shared/wine";
 import { appDir } from "./appPaths";
 import { getCatalog } from "./wineCatalog";
 import { clearCache, getUsage } from "./storage";
-import { deleteVersion, downloadVersion, listInstalled } from "./wineManager";
+import {
+  deleteVersion,
+  downloadVersion,
+  getActiveDownloads,
+  listInstalled,
+} from "./wineManager";
 import { createConfig, listConfigs } from "./configManager";
 
 export function registerIpc(): void {
@@ -11,10 +16,11 @@ export function registerIpc(): void {
   ipcMain.handle("wine:refresh-catalog", () => getCatalog(true));
 
   ipcMain.handle("wine:list-installed", () => listInstalled());
+  ipcMain.handle("wine:active-downloads", () => getActiveDownloads());
 
   ipcMain.handle("wine:download", async (event, id: string) => {
-    await downloadVersion(id, (progress) => {
-      event.sender.send("wine:progress", { id, progress });
+    await downloadVersion(id, (stage, progress) => {
+      event.sender.send("wine:progress", { id, stage, progress });
     });
   });
 

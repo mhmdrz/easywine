@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { promises as fsp } from "fs";
 import { join } from "path";
 import type { WineArch, WineConfig } from "@shared/wine";
-import { configsDir } from "./appPaths";
+import { configsDir, prefixesDir } from "./appPaths";
 import { listInstalled, resolveWineboot } from "./wineManager";
 
 const NAME_RE = /^[\w .()-]{1,64}$/;
@@ -11,8 +11,9 @@ function configFile(name: string): string {
   return join(configsDir(), name, "config.json");
 }
 
+/** The WINEPREFIX lives in its own top-level app folder: prefixes/<name>. */
 function prefixDir(name: string): string {
-  return join(configsDir(), name, "pfx");
+  return join(prefixesDir(), name);
 }
 
 export async function listConfigs(): Promise<WineConfig[]> {
@@ -70,16 +71,14 @@ export async function createConfig(
 ): Promise<WineConfig> {
   const trimmed = name.trim();
   if (!NAME_RE.test(trimmed)) {
-    throw new Error("Invalid configuration name.");
+    throw new Error("Invalid instance name.");
   }
 
-  // Bind only to a Wine version that is actually installed on disk.
   const installed = await listInstalled();
   if (!installed.includes(wineVersion)) {
     throw new Error(`Wine version is not installed: ${wineVersion}`);
   }
 
-  // A prefix can only be booted by a real Wine build, not a source tree.
   const boot = await resolveWineboot(wineVersion);
   if (!boot) {
     throw new Error(
@@ -91,7 +90,7 @@ export async function createConfig(
   const dir = join(configsDir(), trimmed);
   await fsp.mkdir(dir).catch((err: NodeJS.ErrnoException) => {
     if (err.code === "EEXIST") {
-      throw new Error(`A configuration named "${trimmed}" already exists.`);
+      throw new Error(`An instance named "${trimmed}" already exists.`);
     }
     throw err;
   });
@@ -100,6 +99,11 @@ export async function createConfig(
     await initPrefix(boot, prefixDir(trimmed), arch);
   } catch (err) {
     await fsp.rm(dir, { recursive: true, force: true, maxRetries: 3 });
+    await fsp.rm(prefixDir(trimmed), {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+    });
     throw err;
   }
 

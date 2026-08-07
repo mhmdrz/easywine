@@ -40,7 +40,7 @@ function Settings(): React.JSX.Element {
               Storage &amp; Cache
             </h2>
             <p className="mt-1 text-sm text-neutral-400">
-              Downloads and configurations are stored in the app data folder.
+              Downloads and instances are stored in the app data folder.
             </p>
 
             <div className="mt-4 flex items-baseline justify-between border-t border-white/10 pt-4">

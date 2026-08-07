@@ -25,8 +25,11 @@ export type DownloadStatus =
   | "installed"
   | "error";
 
+export type DownloadStage = "downloading" | "verifying" | "extracting";
+
 export interface WineProgress {
   id: string;
+  stage: DownloadStage;
   progress: number;
 }
 

@@ -1,14 +1,26 @@
 import Icon from "./Icon";
-import type { DownloadStatus, WineChannel, WineVersion } from "@shared/wine";
+import type {
+  DownloadStage,
+  DownloadStatus,
+  WineChannel,
+  WineVersion,
+} from "@shared/wine";
 import "./WineVersionCard.scss";
 
 interface WineVersionCardProps {
   version: WineVersion;
   status: DownloadStatus;
+  stage: DownloadStage;
   progress: number;
   onDownload: (id: string) => void;
   onDelete: (id: string) => void;
 }
+
+const STAGE_LABEL: Record<DownloadStage, string> = {
+  downloading: "Downloading",
+  verifying: "Verifying",
+  extracting: "Extracting",
+};
 
 const CHANNEL_BADGE: Record<WineChannel, string> = {
   stable: "bg-emerald-500/15 text-emerald-400",
@@ -30,6 +42,7 @@ function formatDate(iso: string): string {
 function WineVersionCard({
   version,
   status,
+  stage,
   progress,
   onDownload,
   onDelete,
@@ -59,13 +72,25 @@ function WineVersionCard({
 
       <div className="mt-auto pt-1">
         {status === "downloading" ? (
-          <div className="flex items-center gap-3">
-            <div className="progress">
-              <div className="progress__bar" style={{ width: `${progress}%` }} />
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-xs text-neutral-400">
+              <span className="font-medium">{STAGE_LABEL[stage]}</span>
+              <span className="tabular-nums">
+                {stage === "extracting" ? "" : `${progress}%`}
+              </span>
             </div>
-            <span className="w-10 text-right text-xs tabular-nums text-neutral-400">
-              {progress}%
-            </span>
+            <div className="progress">
+              <div
+                className={
+                  stage === "extracting"
+                    ? "progress__bar progress__bar--indeterminate"
+                    : "progress__bar"
+                }
+                style={
+                  stage === "extracting" ? undefined : { width: `${progress}%` }
+                }
+              />
+            </div>
           </div>
         ) : status === "installed" ? (
           <div className="flex items-center justify-between">

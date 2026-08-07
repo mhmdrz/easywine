@@ -1,35 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "../components/Icon";
 import WineVersionCard from "../components/WineVersionCard";
-import type { DownloadStatus, WineVersion } from "@shared/wine";
+import { useDownloads } from "../context/DownloadsProvider";
+import type { WineVersion } from "@shared/wine";
 import "./Downloads.scss";
 
 type MajorFilter = number | "all";
 
 function Downloads(): React.JSX.Element {
+  const { statuses, progress, stages, startDownload, deleteVersion } =
+    useDownloads();
   const [versions, setVersions] = useState<WineVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [statuses, setStatuses] = useState<Record<string, DownloadStatus>>({});
-  const [progress, setProgress] = useState<Record<string, number>>({});
   const [major, setMajor] = useState<MajorFilter>("all");
 
   const applyCatalog = (list: WineVersion[]): void => {
     setVersions(list);
     if (list.length > 0) setMajor(list[0].major);
-  };
-
-  const loadInstalled = (): void => {
-    window.easywine.wine.listInstalled().then((ids) => {
-      setStatuses((prev) => {
-        const next = { ...prev };
-        ids.forEach((id) => {
-          next[id] = "installed";
-        });
-        return next;
-      });
-    });
   };
 
   useEffect(() => {
@@ -49,14 +38,8 @@ function Downloads(): React.JSX.Element {
         if (!cancelled) setLoading(false);
       });
 
-    loadInstalled();
-
-    const unsubscribe = window.easywine.wine.onProgress(({ id, progress }) => {
-      setProgress((prev) => ({ ...prev, [id]: progress }));
-    });
     return () => {
       cancelled = true;
-      unsubscribe();
     };
   }, []);
 
@@ -82,24 +65,6 @@ function Downloads(): React.JSX.Element {
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const handleDownload = async (id: string): Promise<void> => {
-    setStatuses((s) => ({ ...s, [id]: "downloading" }));
-    setProgress((p) => ({ ...p, [id]: 0 }));
-    try {
-      await window.easywine.wine.download(id);
-      setStatuses((s) => ({ ...s, [id]: "installed" }));
-    } catch (err) {
-      console.error(`Failed to download ${id}:`, err);
-      setStatuses((s) => ({ ...s, [id]: "error" }));
-    }
-  };
-
-  const handleDelete = async (id: string): Promise<void> => {
-    await window.easywine.wine.remove(id);
-    setStatuses((s) => ({ ...s, [id]: "available" }));
-    setProgress((p) => ({ ...p, [id]: 0 }));
   };
 
   return (
@@ -171,9 +136,10 @@ function Downloads(): React.JSX.Element {
               key={version.id}
               version={version}
               status={statuses[version.id] ?? "available"}
+              stage={stages[version.id] ?? "downloading"}
               progress={progress[version.id] ?? 0}
-              onDownload={handleDownload}
-              onDelete={handleDelete}
+              onDownload={startDownload}
+              onDelete={deleteVersion}
             />
           ))}
         </div>

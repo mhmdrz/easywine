@@ -15,7 +15,7 @@ function formatDate(iso: string): string {
       });
 }
 
-function Configurations(): React.JSX.Element {
+function Instances(): React.JSX.Element {
   const [configs, setConfigs] = useState<WineConfig[]>([]);
   const [installed, setInstalled] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,7 +33,7 @@ function Configurations(): React.JSX.Element {
     <section>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-wine-light">Configurations</h1>
+          <h1 className="text-2xl font-bold text-wine-light">Instances</h1>
           <p className="mt-1 text-neutral-400">
             Create and manage your Wine prefixes and their settings.
           </p>
@@ -46,7 +46,7 @@ function Configurations(): React.JSX.Element {
 
       {configs.length === 0 ? (
         <p className="mt-6 text-neutral-500">
-          No configurations yet — click “Add” to create your first Wine prefix.
+          No instances yet — click “Add” to create your first Wine prefix.
         </p>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -80,4 +80,4 @@ function Configurations(): React.JSX.Element {
   );
 }
 
-export default Configurations;
+export default Instances;
