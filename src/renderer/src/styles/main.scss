@@ -16,46 +16,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.app-layout {
-  @apply flex min-h-screen;
-}
-
-.sidebar {
-  @apply flex flex-col gap-2 p-3;
-  width: 220px;
-  flex-shrink: 0;
-  background-color: $color-gray-900;
-  border-right: 1px solid $border;
-
-  &__brand {
-    @apply flex items-center gap-2 px-2 py-3 text-lg font-bold;
-    color: $color-light;
-  }
-}
-
-.nav-link {
-  @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium;
-  color: rgba($color-light, 0.7);
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-
-  &:hover {
-    background-color: $color-gray-800;
-    color: $color-light;
-  }
-
-  &.active {
-    background-color: $color-primary;
-    color: $color-light;
-  }
-}
-
-.content {
-  @apply flex-1 overflow-auto p-8;
-  background-color: $bg;
-}
-
 .card {
   @apply rounded-2xl p-6 shadow-lg;
   background-color: $surface;
@@ -66,4 +26,33 @@ body {
   @apply rounded-lg border border-dashed px-4 py-6 text-sm;
   border-color: $border;
   color: rgba($text, 0.6);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold;
+  background-color: $color-primary;
+  color: $color-light;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+
+  &:hover {
+    background-color: $color-accent;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  &--ghost {
+    background-color: transparent;
+    border: 1px solid $border;
+    color: $text;
+
+    &:hover {
+      background-color: $color-gray-800;
+    }
+  }
 }

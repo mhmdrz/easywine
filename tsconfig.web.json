@@ -9,7 +9,8 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"]
+      "@renderer/*": ["src/renderer/src/*"],
+      "@shared/*": ["src/shared/*"]
     },
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
