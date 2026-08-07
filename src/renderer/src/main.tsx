@@ -1,10 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './styles/main.scss'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { HashRouter } from "react-router-dom";
+import App from "./App";
+import "@fontsource-variable/montserrat";
+import "material-symbols/outlined.css";
+import "./styles/main.scss";
 
-ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(
+ReactDOM.createRoot(document.getElementById("app") as HTMLElement).render(
   <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
+    <HashRouter>
+      <App />
+    </HashRouter>
+  </React.StrictMode>,
+);
