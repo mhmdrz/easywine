@@ -15,6 +15,7 @@ import {
   installApp,
   listApps,
   listConfigs,
+  runApp,
   runWinecfg,
 } from "./configManager";
 
@@ -38,6 +39,9 @@ export function registerIpc(): void {
   ipcMain.handle("config:apps", (_event, name: string) => listApps(name));
   ipcMain.handle("config:winecfg", (_event, name: string) => runWinecfg(name));
   ipcMain.handle("config:install", (_event, name: string) => installApp(name));
+  ipcMain.handle("config:run", (_event, name: string, appPath: string) =>
+    runApp(name, appPath),
+  );
   ipcMain.handle(
     "config:create",
     (_event, name: string, wineVersion: string, arch: WineArch) =>

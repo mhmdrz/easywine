@@ -52,6 +52,8 @@ export const api = {
       ipcRenderer.invoke("config:winecfg", name),
     install: (name: string): Promise<string | null> =>
       ipcRenderer.invoke("config:install", name),
+    run: (name: string, appPath: string): Promise<void> =>
+      ipcRenderer.invoke("config:run", name, appPath),
     create: (
       name: string,
       wineVersion: string,

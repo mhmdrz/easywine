@@ -45,6 +45,16 @@ function Instance(): React.JSX.Element {
     };
   }, [name]);
 
+  const handleRun = async (app: InstalledApp): Promise<void> => {
+    setNote(null);
+    try {
+      await window.easywine.config.run(name, app.path);
+      setNote(`Launching “${app.name}”…`);
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Could not launch the app.");
+    }
+  };
+
   const handleInstall = async (): Promise<void> => {
     setInstalling(true);
     setNote(null);
@@ -150,15 +160,27 @@ function Instance(): React.JSX.Element {
             ) : (
               <ul className="mt-3 flex flex-col divide-y divide-white/10">
                 {apps.map((app) => (
-                  <li
-                    key={app.path}
-                    className="flex items-center gap-3 py-2.5 text-sm text-neutral-200"
-                  >
-                    <Icon
-                      name="desktop_windows"
-                      className="text-lg text-wine-accent"
-                    />
-                    {app.name}
+                  <li key={app.path}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm text-neutral-200 transition-colors hover:bg-white/5 hover:text-wine-light"
+                      title={`Launch ${app.name}`}
+                      onClick={() => handleRun(app)}
+                    >
+                      {app.icon ? (
+                        <img
+                          src={app.icon}
+                          alt=""
+                          className="h-5 w-5 shrink-0 object-contain"
+                        />
+                      ) : (
+                        <Icon
+                          name="desktop_windows"
+                          className="text-lg text-wine-accent"
+                        />
+                      )}
+                      {app.name}
+                    </button>
                   </li>
                 ))}
               </ul>

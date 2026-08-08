@@ -1,10 +1,12 @@
 import { dialog } from "electron";
 import { spawn } from "child_process";
 import { promises as fsp } from "fs";
-import { join } from "path";
+import { join, resolve, sep } from "path";
 import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
 import { listInstalled, resolveWineboot, resolveWineTool } from "./wineManager";
+import { parseLnk } from "./lnk";
+import { extractIconDataUri } from "./peIcon";
 
 const NAME_RE = /^[\w .()-]{1,64}$/;
 
@@ -144,6 +146,54 @@ async function collectShortcuts(dir: string): Promise<InstalledApp[]> {
   return apps;
 }
 
+const ENV_PATHS: Record<string, string> = {
+  "%systemroot%": "C:\\windows",
+  "%windir%": "C:\\windows",
+  "%programfiles%": "C:\\Program Files",
+  "%programfiles(x86)%": "C:\\Program Files (x86)",
+};
+
+function winPathToPrefix(name: string, winPath: string): string | null {
+  const expanded = winPath
+    .trim()
+    .replace(/%[^%]+%/g, (m) => ENV_PATHS[m.toLowerCase()] ?? m);
+  const match = /^([a-zA-Z]):\\?(.*)$/.exec(expanded);
+  if (!match) return null;
+  const rest = match[2].replace(/\\/g, "/");
+  return join(prefixDir(name), `drive_${match[1].toLowerCase()}`, rest);
+}
+
+async function resolveIcon(
+  name: string,
+  lnkPath: string,
+): Promise<string | undefined> {
+  try {
+    const info = parseLnk(await fsp.readFile(lnkPath));
+    if (!info) return undefined;
+
+    const sources: Array<{ win: string; index: number }> = [];
+    if (info.iconLocation && /\.(exe|dll|ico)$/i.test(info.iconLocation)) {
+      sources.push({ win: info.iconLocation, index: info.iconIndex });
+    }
+    if (info.target) sources.push({ win: info.target, index: info.iconIndex });
+
+    for (const src of sources) {
+      const unix = winPathToPrefix(name, src.win);
+      if (!unix) continue;
+      if (/\.ico$/i.test(unix)) {
+        const raw = await fsp.readFile(unix).catch(() => null);
+        if (raw) return `data:image/x-icon;base64,${raw.toString("base64")}`;
+        continue;
+      }
+      const icon = await extractIconDataUri(unix, src.index);
+      if (icon) return icon;
+    }
+  } catch {
+    // Any failure just means we fall back to the default icon.
+  }
+  return undefined;
+}
+
 export async function listApps(name: string): Promise<InstalledApp[]> {
   if (!NAME_RE.test(name)) return [];
   const driveC = join(prefixDir(name), "drive_c");
@@ -163,9 +213,38 @@ export async function listApps(name: string): Promise<InstalledApp[]> {
 
   const found = (await Promise.all(menus.map(collectShortcuts))).flat();
   const byName = new Map(found.map((a) => [a.name, a]));
-  return Array.from(byName.values()).sort((a, b) =>
-    a.name.localeCompare(b.name),
+  const withIcons = await Promise.all(
+    Array.from(byName.values()).map(async (app) => ({
+      ...app,
+      icon: await resolveIcon(name, app.path),
+    })),
   );
+  return withIcons.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function runApp(name: string, appPath: string): Promise<void> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+
+  const root = prefixDir(name);
+  const target = resolve(appPath);
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error("Refusing to launch a file outside the prefix.");
+  }
+
+  const wine = await resolveWineTool(config.wineVersion, "wine");
+  if (!wine) throw new Error("wine is not available for this Wine version.");
+
+  const child = spawn(wine, ["start", "/unix", target], {
+    env: {
+      ...process.env,
+      WINEPREFIX: root,
+      WINEARCH: config.arch,
+    },
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
 }
 
 export async function runWinecfg(name: string): Promise<void> {

@@ -22,6 +22,7 @@ export interface WineConfig {
 export interface InstalledApp {
   name: string;
   path: string;
+  icon?: string;
 }
 
 export type DownloadStatus =
