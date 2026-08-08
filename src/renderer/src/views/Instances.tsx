@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Icon from "../components/Icon";
 import CreateConfigModal from "../components/CreateConfigModal";
 import type { WineConfig } from "@shared/wine";
@@ -64,6 +65,13 @@ function Instances(): React.JSX.Element {
               <p className="text-xs text-neutral-500">
                 Created {formatDate(config.createdAt)}
               </p>
+              <Link
+                to={`/instance/${encodeURIComponent(config.name)}`}
+                className="btn btn--ghost mt-2"
+              >
+                <Icon name="open_in_new" className="text-lg" />
+                Open
+              </Link>
             </div>
           ))}
         </div>

@@ -1,13 +1,6 @@
 @use "../styles/variables" as *;
 
-.modal-overlay {
-  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
-  background-color: rgba($color-black, 0.6);
-}
-
 .modal {
-  @apply w-full max-w-md;
-
   &__field {
     @apply mt-4 flex flex-col gap-1.5;
   }

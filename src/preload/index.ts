@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type {
+  InstalledApp,
   StorageUsage,
   WineArch,
   WineConfig,
@@ -43,6 +44,14 @@ export const api = {
   },
   config: {
     list: (): Promise<WineConfig[]> => ipcRenderer.invoke("config:list"),
+    get: (name: string): Promise<WineConfig | null> =>
+      ipcRenderer.invoke("config:get", name),
+    apps: (name: string): Promise<InstalledApp[]> =>
+      ipcRenderer.invoke("config:apps", name),
+    winecfg: (name: string): Promise<void> =>
+      ipcRenderer.invoke("config:winecfg", name),
+    install: (name: string): Promise<string | null> =>
+      ipcRenderer.invoke("config:install", name),
     create: (
       name: string,
       wineVersion: string,

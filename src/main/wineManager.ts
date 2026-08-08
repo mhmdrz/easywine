@@ -34,14 +34,25 @@ async function isExecutable(path: string): Promise<boolean> {
     .catch(() => false);
 }
 
+function wineBinDir(id: string): string {
+  return join(installDir(id), "Contents", "Resources", "wine", "bin");
+}
+
+export async function resolveWineTool(
+  id: string,
+  tool: string,
+): Promise<string | null> {
+  const path = join(wineBinDir(id), tool);
+  return (await isExecutable(path)) ? path : null;
+}
+
 export async function resolveWineboot(
   id: string,
 ): Promise<{ cmd: string; args: string[] } | null> {
-  const bin = join(installDir(id), "Contents", "Resources", "wine", "bin");
-  const wineboot = join(bin, "wineboot");
-  if (await isExecutable(wineboot)) return { cmd: wineboot, args: [] };
-  const wine = join(bin, "wine");
-  if (await isExecutable(wine)) return { cmd: wine, args: ["wineboot"] };
+  const wineboot = await resolveWineTool(id, "wineboot");
+  if (wineboot) return { cmd: wineboot, args: [] };
+  const wine = await resolveWineTool(id, "wine");
+  if (wine) return { cmd: wine, args: ["wineboot"] };
   return null;
 }
 

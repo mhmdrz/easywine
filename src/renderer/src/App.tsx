@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Instances from "./views/Instances";
+import Instance from "./views/Instance";
 import Downloads from "./views/Downloads";
 import Settings from "./views/Settings";
 
@@ -9,6 +10,7 @@ function App(): React.JSX.Element {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Instances />} />
+        <Route path="instance/:name" element={<Instance />} />
         <Route path="downloads" element={<Downloads />} />
         <Route path="settings" element={<Settings />} />
         {/* Unknown paths fall back to instances. */}

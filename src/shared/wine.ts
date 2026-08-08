@@ -19,6 +19,11 @@ export interface WineConfig {
   createdAt: string;
 }
 
+export interface InstalledApp {
+  name: string;
+  path: string;
+}
+
 export type DownloadStatus =
   | "available"
   | "downloading"

@@ -1,14 +1,25 @@
+import { dialog } from "electron";
 import { spawn } from "child_process";
 import { promises as fsp } from "fs";
 import { join } from "path";
-import type { WineArch, WineConfig } from "@shared/wine";
+import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
-import { listInstalled, resolveWineboot } from "./wineManager";
+import { listInstalled, resolveWineboot, resolveWineTool } from "./wineManager";
 
 const NAME_RE = /^[\w .()-]{1,64}$/;
 
 function configFile(name: string): string {
   return join(configsDir(), name, "config.json");
+}
+
+export async function getConfig(name: string): Promise<WineConfig | null> {
+  if (!NAME_RE.test(name)) return null;
+  try {
+    const raw = await fsp.readFile(configFile(name), "utf8");
+    return JSON.parse(raw) as WineConfig;
+  } catch {
+    return null;
+  }
 }
 
 /** The WINEPREFIX lives in its own top-level app folder: prefixes/<name>. */
@@ -115,4 +126,97 @@ export async function createConfig(
   };
   await fsp.writeFile(configFile(trimmed), JSON.stringify(config, null, 2));
   return config;
+}
+
+async function collectShortcuts(dir: string): Promise<InstalledApp[]> {
+  const entries = await fsp
+    .readdir(dir, { withFileTypes: true })
+    .catch(() => []);
+  const apps: InstalledApp[] = [];
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      apps.push(...(await collectShortcuts(full)));
+    } else if (entry.name.toLowerCase().endsWith(".lnk")) {
+      apps.push({ name: entry.name.replace(/\.lnk$/i, ""), path: full });
+    }
+  }
+  return apps;
+}
+
+export async function listApps(name: string): Promise<InstalledApp[]> {
+  if (!NAME_RE.test(name)) return [];
+  const driveC = join(prefixDir(name), "drive_c");
+  const startMenu = join("Microsoft", "Windows", "Start Menu", "Programs");
+
+  const menus = [join(driveC, "ProgramData", startMenu)];
+  const users = await fsp
+    .readdir(join(driveC, "users"), { withFileTypes: true })
+    .catch(() => []);
+  for (const user of users) {
+    if (user.isDirectory()) {
+      menus.push(
+        join(driveC, "users", user.name, "AppData", "Roaming", startMenu),
+      );
+    }
+  }
+
+  const found = (await Promise.all(menus.map(collectShortcuts))).flat();
+  const byName = new Map(found.map((a) => [a.name, a]));
+  return Array.from(byName.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+}
+
+export async function runWinecfg(name: string): Promise<void> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+
+  const winecfg = await resolveWineTool(config.wineVersion, "winecfg");
+  if (!winecfg) {
+    throw new Error("winecfg is not available for this Wine version.");
+  }
+
+  const child = spawn(winecfg, {
+    env: {
+      ...process.env,
+      WINEPREFIX: prefixDir(name),
+      WINEARCH: config.arch,
+    },
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+}
+
+export async function installApp(name: string): Promise<string | null> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+
+  const wine = await resolveWineTool(config.wineVersion, "wine");
+  if (!wine) throw new Error("wine is not available for this Wine version.");
+
+  const result = await dialog.showOpenDialog({
+    title: "Select a Windows installer",
+    properties: ["openFile"],
+    filters: [{ name: "Windows programs", extensions: ["exe", "msi"] }],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+
+  const installer = result.filePaths[0];
+  const args = installer.toLowerCase().endsWith(".msi")
+    ? ["msiexec", "/i", installer]
+    : [installer];
+
+  const child = spawn(wine, args, {
+    env: {
+      ...process.env,
+      WINEPREFIX: prefixDir(name),
+      WINEARCH: config.arch,
+    },
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  return installer;
 }

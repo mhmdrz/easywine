@@ -9,7 +9,14 @@ import {
   getActiveDownloads,
   listInstalled,
 } from "./wineManager";
-import { createConfig, listConfigs } from "./configManager";
+import {
+  createConfig,
+  getConfig,
+  installApp,
+  listApps,
+  listConfigs,
+  runWinecfg,
+} from "./configManager";
 
 export function registerIpc(): void {
   ipcMain.handle("wine:catalog", () => getCatalog());
@@ -27,6 +34,10 @@ export function registerIpc(): void {
   ipcMain.handle("wine:delete", (_event, id: string) => deleteVersion(id));
 
   ipcMain.handle("config:list", () => listConfigs());
+  ipcMain.handle("config:get", (_event, name: string) => getConfig(name));
+  ipcMain.handle("config:apps", (_event, name: string) => listApps(name));
+  ipcMain.handle("config:winecfg", (_event, name: string) => runWinecfg(name));
+  ipcMain.handle("config:install", (_event, name: string) => installApp(name));
   ipcMain.handle(
     "config:create",
     (_event, name: string, wineVersion: string, arch: WineArch) =>

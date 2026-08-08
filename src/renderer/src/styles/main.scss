@@ -42,6 +42,15 @@ body {
   }
 }
 
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  background-color: rgba($color-black, 0.6);
+}
+
+.modal {
+  @apply w-full max-w-lg;
+}
+
 .btn {
   @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold;
   background-color: $color-primary;
