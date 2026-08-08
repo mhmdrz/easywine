@@ -27,6 +27,17 @@ function PrefixSettingsModal({
     }
   };
 
+  const openDriveC = async (): Promise<void> => {
+    setError(null);
+    try {
+      await window.easywine.config.openDriveC(name);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not open drive C.",
+      );
+    }
+  };
+
   return (
     <div
       className="modal-overlay"
@@ -70,6 +81,19 @@ function PrefixSettingsModal({
           >
             <Icon name="tune" className="text-lg" />
             {launching ? "Launching…" : "Run winecfg"}
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+          <div>
+            <p className="text-sm font-medium text-wine-light">Drive C</p>
+            <p className="text-xs text-neutral-500">
+              Open the prefix's drive_c folder in Finder.
+            </p>
+          </div>
+          <button type="button" className="btn" onClick={openDriveC}>
+            <Icon name="folder_open" className="text-lg" />
+            Open drive C
           </button>
         </div>
 

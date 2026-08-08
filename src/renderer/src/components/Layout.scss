@@ -15,6 +15,11 @@
     @apply flex items-center gap-2 px-2 py-3 text-lg font-bold;
     color: $color-light;
   }
+
+  &__version {
+    @apply mt-auto px-2 py-2 text-xs font-medium;
+    color: rgba($color-light, 0.4);
+  }
 }
 
 .nav-link {

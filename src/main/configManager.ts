@@ -1,12 +1,13 @@
-import { dialog } from "electron";
+import { dialog, shell } from "electron";
 import { spawn } from "child_process";
 import { promises as fsp } from "fs";
-import { join, resolve, sep } from "path";
+import { basename, join, resolve, sep } from "path";
 import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
 import { listInstalled, resolveWineboot, resolveWineTool } from "./wineManager";
 import { parseLnk } from "./lnk";
 import { extractIconDataUri } from "./peIcon";
+import { findUninstallers, type Uninstaller } from "./registry";
 
 const NAME_RE = /^[\w .()-]{1,64}$/;
 
@@ -245,6 +246,97 @@ export async function runApp(name: string, appPath: string): Promise<void> {
     stdio: "ignore",
   });
   child.unref();
+}
+
+function splitCommandLine(input: string): string[] {
+  const args: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (const c of input) {
+    if (c === '"') quoted = !quoted;
+    else if (!quoted && /\s/.test(c)) {
+      if (cur) args.push(cur);
+      cur = "";
+    } else cur += c;
+  }
+  if (cur) args.push(cur);
+  return args;
+}
+
+function normalizeName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function matchUninstaller(
+  appName: string,
+  list: Uninstaller[],
+): Uninstaller | null {
+  const target = normalizeName(appName);
+  if (!target) return null;
+  let partial: Uninstaller | null = null;
+  for (const u of list) {
+    const dn = normalizeName(u.displayName);
+    if (!dn) continue;
+    if (dn === target) return u; // exact match wins outright
+    if (!partial && (dn.includes(target) || target.includes(dn))) partial = u;
+  }
+  return partial;
+}
+
+function runAndWait(
+  cmd: string,
+  args: string[],
+  prefix: string,
+  arch: WineArch,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      env: {
+        ...process.env,
+        WINEPREFIX: prefix,
+        WINEARCH: arch,
+        WINEDEBUG: "-all",
+      },
+      stdio: "ignore",
+    });
+    child.on("error", reject);
+    child.on("close", () => resolve());
+  });
+}
+
+export async function uninstallApp(
+  name: string,
+  appPath: string,
+): Promise<{ uninstaller: boolean }> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+
+  const root = prefixDir(name);
+  const target = resolve(appPath);
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error("Refusing to modify a file outside the prefix.");
+  }
+
+  const appName = basename(target).replace(/\.lnk$/i, "");
+  const match = matchUninstaller(appName, await findUninstallers(root));
+
+  if (match) {
+    const wine = await resolveWineTool(config.wineVersion, "wine");
+    if (!wine) throw new Error("wine is not available for this Wine version.");
+    const argv = splitCommandLine(match.uninstallString);
+    if (argv.length > 0) await runAndWait(wine, argv, root, config.arch);
+  }
+
+  await fsp.rm(target, { force: true });
+  return { uninstaller: Boolean(match) };
+}
+
+export async function openDriveC(name: string): Promise<void> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+  const driveC = join(prefixDir(name), "drive_c");
+  const error = await shell.openPath(driveC);
+  if (error) throw new Error(error);
 }
 
 export async function runWinecfg(name: string): Promise<void> {

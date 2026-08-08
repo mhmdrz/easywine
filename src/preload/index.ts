@@ -18,6 +18,10 @@ export const api = {
     chrome: process.versions.chrome,
     node: process.versions.node,
   },
+  app: {
+    /** The application version (from package.json). */
+    version: (): Promise<string> => ipcRenderer.invoke("app:version"),
+  },
   wine: {
     /** Full catalog scraped from WineHQ (cached). */
     catalog: (): Promise<WineVersion[]> => ipcRenderer.invoke("wine:catalog"),
@@ -50,10 +54,17 @@ export const api = {
       ipcRenderer.invoke("config:apps", name),
     winecfg: (name: string): Promise<void> =>
       ipcRenderer.invoke("config:winecfg", name),
+    openDriveC: (name: string): Promise<void> =>
+      ipcRenderer.invoke("config:open-drive-c", name),
     install: (name: string): Promise<string | null> =>
       ipcRenderer.invoke("config:install", name),
     run: (name: string, appPath: string): Promise<void> =>
       ipcRenderer.invoke("config:run", name, appPath),
+    uninstall: (
+      name: string,
+      appPath: string,
+    ): Promise<{ uninstaller: boolean }> =>
+      ipcRenderer.invoke("config:uninstall", name, appPath),
     create: (
       name: string,
       wineVersion: string,

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import Icon from "./Icon";
 import "./Layout.scss";
@@ -16,6 +17,12 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 function Layout(): React.JSX.Element {
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    window.easywine.app.version().then(setVersion);
+  }, []);
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -38,6 +45,9 @@ function Layout(): React.JSX.Element {
             </NavLink>
           ))}
         </nav>
+        {version && (
+          <div className="sidebar__version">v{version}</div>
+        )}
       </aside>
       <main className="content">
         <Outlet />

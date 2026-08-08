@@ -1,4 +1,4 @@
-import { ipcMain, shell } from "electron";
+import { app, ipcMain, shell } from "electron";
 import type { WineArch } from "@shared/wine";
 import { appDir } from "./appPaths";
 import { getCatalog } from "./wineCatalog";
@@ -15,11 +15,15 @@ import {
   installApp,
   listApps,
   listConfigs,
+  openDriveC,
   runApp,
   runWinecfg,
+  uninstallApp,
 } from "./configManager";
 
 export function registerIpc(): void {
+  ipcMain.handle("app:version", () => app.getVersion());
+
   ipcMain.handle("wine:catalog", () => getCatalog());
   ipcMain.handle("wine:refresh-catalog", () => getCatalog(true));
 
@@ -38,9 +42,15 @@ export function registerIpc(): void {
   ipcMain.handle("config:get", (_event, name: string) => getConfig(name));
   ipcMain.handle("config:apps", (_event, name: string) => listApps(name));
   ipcMain.handle("config:winecfg", (_event, name: string) => runWinecfg(name));
+  ipcMain.handle("config:open-drive-c", (_event, name: string) =>
+    openDriveC(name),
+  );
   ipcMain.handle("config:install", (_event, name: string) => installApp(name));
   ipcMain.handle("config:run", (_event, name: string, appPath: string) =>
     runApp(name, appPath),
+  );
+  ipcMain.handle("config:uninstall", (_event, name: string, appPath: string) =>
+    uninstallApp(name, appPath),
   );
   ipcMain.handle(
     "config:create",

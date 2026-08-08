@@ -24,6 +24,7 @@ function Instance(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   const loadApps = useCallback((): void => {
@@ -52,6 +53,24 @@ function Instance(): React.JSX.Element {
       setNote(`Launching “${app.name}”…`);
     } catch (err) {
       setNote(err instanceof Error ? err.message : "Could not launch the app.");
+    }
+  };
+
+  const handleUninstall = async (app: InstalledApp): Promise<void> => {
+    setRemoving(app.path);
+    setNote(null);
+    try {
+      const res = await window.easywine.config.uninstall(name, app.path);
+      setNote(
+        res.uninstaller
+          ? `Removed “${app.name}”.`
+          : `Removed “${app.name}” from the list (no uninstaller found).`,
+      );
+      loadApps();
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Could not remove the app.");
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -160,10 +179,10 @@ function Instance(): React.JSX.Element {
             ) : (
               <ul className="mt-3 flex flex-col divide-y divide-white/10">
                 {apps.map((app) => (
-                  <li key={app.path}>
+                  <li key={app.path} className="flex items-center gap-1">
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm text-neutral-200 transition-colors hover:bg-white/5 hover:text-wine-light"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm text-neutral-200 transition-colors hover:bg-white/5 hover:text-wine-light"
                       title={`Launch ${app.name}`}
                       onClick={() => handleRun(app)}
                     >
@@ -179,7 +198,26 @@ function Instance(): React.JSX.Element {
                           className="text-lg text-wine-accent"
                         />
                       )}
-                      {app.name}
+                      <span className="truncate">{app.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn shrink-0 text-neutral-400 hover:text-red-400"
+                      title={`Delete ${app.name}`}
+                      aria-label={`Delete ${app.name}`}
+                      onClick={() => handleUninstall(app)}
+                      disabled={removing === app.path}
+                    >
+                      <Icon
+                        name={
+                          removing === app.path ? "progress_activity" : "delete"
+                        }
+                        className={
+                          removing === app.path
+                            ? "animate-spin text-lg"
+                            : "text-lg"
+                        }
+                      />
                     </button>
                   </li>
                 ))}
