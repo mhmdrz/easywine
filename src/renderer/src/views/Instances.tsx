@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Icon from "../components/Icon";
 import CreateConfigModal from "../components/CreateConfigModal";
 import type { WineConfig } from "@shared/wine";
+import { CXWINE_VERSION_ID } from "@shared/wine";
 import { formatVersionId } from "../utils/format";
 
 function formatDate(iso: string): string {
@@ -22,7 +23,11 @@ function Instances(): React.JSX.Element {
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    window.easywine.config.list().then(setConfigs);
+    window.easywine.config
+      .list()
+      .then((list) =>
+        setConfigs(list.filter((c) => c.wineVersion !== CXWINE_VERSION_ID)),
+      );
   }, []);
 
   const openModal = async (): Promise<void> => {

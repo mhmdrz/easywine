@@ -3,6 +3,7 @@ import { spawn } from "child_process";
 import { promises as fsp } from "fs";
 import { basename, join, resolve, sep } from "path";
 import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
+import { CXWINE_VERSION_ID } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
 import { listInstalled, resolveWineboot, resolveWineTool } from "./wineManager";
 import { parseLnk } from "./lnk";
@@ -25,7 +26,6 @@ export async function getConfig(name: string): Promise<WineConfig | null> {
   }
 }
 
-/** The WINEPREFIX lives in its own top-level app folder: prefixes/<name>. */
 function prefixDir(name: string): string {
   return join(prefixesDir(), name);
 }
@@ -88,16 +88,20 @@ export async function createConfig(
     throw new Error("Invalid instance name.");
   }
 
-  const installed = await listInstalled();
-  if (!installed.includes(wineVersion)) {
-    throw new Error(`Wine version is not installed: ${wineVersion}`);
+  if (wineVersion !== CXWINE_VERSION_ID) {
+    const installed = await listInstalled();
+    if (!installed.includes(wineVersion)) {
+      throw new Error(`Wine version is not installed: ${wineVersion}`);
+    }
   }
 
   const boot = await resolveWineboot(wineVersion);
   if (!boot) {
     throw new Error(
-      `Wine ${wineVersion.replace(/^wine-/, "")} has no runnable "wineboot" ` +
-        `(it is a source distribution). A pre-built Wine is required to create a prefix.`,
+      wineVersion === CXWINE_VERSION_ID
+        ? `The custom D3DMetal Wine build is not ready yet — compile or import it first.`
+        : `Wine ${wineVersion.replace(/^wine-/, "")} has no runnable "wineboot" ` +
+            `(it is a source distribution). A pre-built Wine is required to create a prefix.`,
     );
   }
 

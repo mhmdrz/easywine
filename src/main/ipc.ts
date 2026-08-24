@@ -20,6 +20,12 @@ import {
   runWinecfg,
   uninstallApp,
 } from "./configManager";
+import {
+  getCxwineStatus,
+  importCxwineBuild,
+  importCxwineSource,
+  openCxwineCompiler,
+} from "./cxwine";
 
 export function registerIpc(): void {
   ipcMain.handle("app:version", () => app.getVersion());
@@ -57,6 +63,15 @@ export function registerIpc(): void {
     (_event, name: string, wineVersion: string, arch: WineArch) =>
       createConfig(name, wineVersion, arch),
   );
+
+  ipcMain.handle("cxwine:status", () => getCxwineStatus());
+  ipcMain.handle("cxwine:import-source", () => importCxwineSource());
+  ipcMain.handle("cxwine:import-build", () => importCxwineBuild());
+  ipcMain.handle("cxwine:open-compiler", () => openCxwineCompiler());
+  ipcMain.handle("app:open-external", (_event, url: string) => {
+    if (/^https:\/\//i.test(url)) return shell.openExternal(url);
+    return Promise.resolve();
+  });
 
   ipcMain.handle("storage:usage", () => getUsage());
   ipcMain.handle("storage:clear-cache", () => clearCache());

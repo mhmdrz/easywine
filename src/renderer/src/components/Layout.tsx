@@ -11,6 +11,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { to: "/game-exclusive", label: "Game exclusive", icon: "sports_esports" },
   { to: "/", label: "Instances", icon: "folder", end: true },
   { to: "/downloads", label: "Downloads", icon: "download" },
   { to: "/settings", label: "Settings", icon: "settings" },

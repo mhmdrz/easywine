@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type {
+  CxwineStatus,
   InstalledApp,
   StorageUsage,
   WineArch,
@@ -21,6 +22,22 @@ export const api = {
   app: {
     /** The application version (from package.json). */
     version: (): Promise<string> => ipcRenderer.invoke("app:version"),
+    /** Open an https URL in the user's default browser. */
+    openExternal: (url: string): Promise<void> =>
+      ipcRenderer.invoke("app:open-external", url),
+  },
+  cxwine: {
+    /** State of the custom CrossOver + D3DMetal Wine build. */
+    status: (): Promise<CxwineStatus> => ipcRenderer.invoke("cxwine:status"),
+    /** Pick + extract the CrossOver source and drop in the compile helpers. */
+    importSource: (): Promise<{ imported: boolean }> =>
+      ipcRenderer.invoke("cxwine:import-source"),
+    /** Copy a previously compiled build into the app folder (no recompile). */
+    importBuild: (): Promise<{ imported: boolean }> =>
+      ipcRenderer.invoke("cxwine:import-build"),
+    /** Open the compile helper script in Terminal. */
+    openCompiler: (): Promise<void> =>
+      ipcRenderer.invoke("cxwine:open-compiler"),
   },
   wine: {
     /** Full catalog scraped from WineHQ (cached). */

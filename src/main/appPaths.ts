@@ -26,3 +26,15 @@ export function prefixesDir(): string {
 export function cacheDir(): string {
   return ensure(join(appDir(), "cache"));
 }
+
+export function cxwineDir(): string {
+  return ensure(join(appDir(), "cxwine"));
+}
+
+export function cxwineSourceDir(): string {
+  return join(cxwineDir(), "source");
+}
+
+export function cxwineBuildDir(): string {
+  return join(cxwineDir(), "build");
+}

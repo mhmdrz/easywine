@@ -1,4 +1,7 @@
+import { CXWINE_VERSION_ID } from "@shared/wine";
+
 export function formatVersionId(id: string): string {
+  if (id === CXWINE_VERSION_ID) return "CrossOver · D3DMetal";
   const match = /^wine-(.+)-(devel|staging|stable)$/.exec(id);
   return match ? `${match[1]} · ${match[2]}` : id.replace(/^wine-/, "");
 }

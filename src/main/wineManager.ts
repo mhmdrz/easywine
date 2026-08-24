@@ -10,7 +10,8 @@ import {
 } from "fs";
 import { join } from "path";
 import type { DownloadStage } from "@shared/wine";
-import { cacheDir, downloadsDir } from "./appPaths";
+import { CXWINE_VERSION_ID } from "@shared/wine";
+import { cacheDir, cxwineBuildDir, downloadsDir } from "./appPaths";
 import { findVersion, getCatalog } from "./wineCatalog";
 
 type ProgressFn = (stage: DownloadStage, percent: number) => void;
@@ -42,6 +43,17 @@ export async function resolveWineTool(
   id: string,
   tool: string,
 ): Promise<string | null> {
+  if (id === CXWINE_VERSION_ID) {
+    const bin = join(cxwineBuildDir(), "bin");
+    // The CrossOver build may name its loader wine, wine64 or cxwine.
+    const names =
+      tool === "wine" ? ["wine", "wine64", "cxwine"] : [tool];
+    for (const name of names) {
+      const path = join(bin, name);
+      if (await isExecutable(path)) return path;
+    }
+    return null;
+  }
   const path = join(wineBinDir(id), tool);
   return (await isExecutable(path)) ? path : null;
 }

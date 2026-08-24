@@ -1,6 +1,6 @@
 {
   "name": "easywine",
-  "version": "0.5.1",
+  "version": "0.8.0",
   "description": "A GUI for Wine on macOS to easily control and create new Wine configurations and their settings, powered by Electron",
   "homepage": "https://github.com/mhmdrz/easywine#readme",
   "bugs": {

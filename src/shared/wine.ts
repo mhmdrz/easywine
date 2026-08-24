@@ -1,5 +1,7 @@
 export type WineChannel = "stable" | "development" | "staging";
 
+export const CXWINE_VERSION_ID = "cxwine";
+
 export interface WineVersion {
   id: string;
   version: string;
@@ -42,4 +44,10 @@ export interface WineProgress {
 export interface StorageUsage {
   path: string;
   bytes: number;
+}
+
+export interface CxwineStatus {
+  sourceReady: boolean;
+  buildReady: boolean;
+  redistReady: boolean;
 }
