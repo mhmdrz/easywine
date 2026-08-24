@@ -27,6 +27,7 @@ import {
   importCxwineSource,
   openCxwineCompiler,
 } from "./cxwine";
+import { installRuntime, type RuntimeKind } from "./prefixRuntime";
 
 export function registerIpc(): void {
   ipcMain.handle("app:version", () => app.getVersion());
@@ -65,6 +66,10 @@ export function registerIpc(): void {
       createConfig(name, wineVersion, arch),
   );
   ipcMain.handle("config:delete", (_event, name: string) => deleteConfig(name));
+  ipcMain.handle(
+    "config:install-runtime",
+    (_event, name: string, kind: RuntimeKind) => installRuntime(name, kind),
+  );
 
   ipcMain.handle("cxwine:status", () => getCxwineStatus());
   ipcMain.handle("cxwine:import-source", () => importCxwineSource());

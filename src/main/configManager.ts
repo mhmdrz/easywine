@@ -63,6 +63,9 @@ function initPrefix(
         WINEPREFIX: prefix,
         WINEARCH: arch,
         WINEDEBUG: "-all",
+        // Disable the Mono/Gecko installer dialogs; otherwise wineboot blocks
+        // on a modal prompt and prefix creation never completes.
+        WINEDLLOVERRIDES: "mscoree,mshtml=",
       },
     });
     let stderr = "";
@@ -106,12 +109,21 @@ export async function createConfig(
   }
 
   const dir = join(configsDir(), trimmed);
-  await fsp.mkdir(dir).catch((err: NodeJS.ErrnoException) => {
-    if (err.code === "EEXIST") {
+  try {
+    await fsp.mkdir(dir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+    // A folder already exists. If it holds a real config it's a genuine
+    // duplicate; otherwise it's a leftover from a failed attempt we can reuse.
+    if (await getConfig(trimmed)) {
       throw new Error(`An instance named "${trimmed}" already exists.`);
     }
-    throw err;
-  });
+    await fsp.rm(prefixDir(trimmed), {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+    });
+  }
 
   try {
     await initPrefix(boot, prefixDir(trimmed), arch);
@@ -363,12 +375,19 @@ export async function runWinecfg(name: string): Promise<void> {
   const config = await getConfig(name);
   if (!config) throw new Error(`Unknown instance: ${name}`);
 
-  const winecfg = await resolveWineTool(config.wineVersion, "winecfg");
-  if (!winecfg) {
+  // Prefer a standalone winecfg binary; CrossOver builds only ship the wine
+  // loader, so fall back to running the winecfg builtin via `wine winecfg`.
+  const standalone = await resolveWineTool(config.wineVersion, "winecfg");
+  const wine = standalone
+    ? null
+    : await resolveWineTool(config.wineVersion, "wine");
+  if (!standalone && !wine) {
     throw new Error("winecfg is not available for this Wine version.");
   }
+  const cmd = standalone ?? (wine as string);
+  const args = standalone ? [] : ["winecfg"];
 
-  const child = spawn(winecfg, {
+  const child = spawn(cmd, args, {
     env: {
       ...process.env,
       WINEPREFIX: prefixDir(name),

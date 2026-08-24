@@ -260,6 +260,7 @@ function Instance(): React.JSX.Element {
       {settingsOpen && config && (
         <PrefixSettingsModal
           name={config.name}
+          wineVersion={config.wineVersion}
           onClose={() => setSettingsOpen(false)}
         />
       )}

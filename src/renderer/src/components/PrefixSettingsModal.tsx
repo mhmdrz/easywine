@@ -1,17 +1,48 @@
 import { useState } from "react";
 import Icon from "./Icon";
+import { CXWINE_VERSION_ID } from "@shared/wine";
 
 interface PrefixSettingsModalProps {
   name: string;
+  wineVersion: string;
   onClose: () => void;
 }
 
 function PrefixSettingsModal({
   name,
+  wineVersion,
   onClose,
 }: PrefixSettingsModalProps): React.JSX.Element {
   const [launching, setLaunching] = useState(false);
+  const [installing, setInstalling] = useState<"mono" | "gecko" | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const isGame = wineVersion === CXWINE_VERSION_ID;
+
+  const installRuntime = async (kind: "mono" | "gecko"): Promise<void> => {
+    setInstalling(kind);
+    setError(null);
+    setNote(`Installing ${kind === "mono" ? "Mono" : "Gecko"}…`);
+    try {
+      const { version } = await window.easywine.config.installRuntime(
+        name,
+        kind,
+      );
+      setNote(
+        `${kind === "mono" ? "Mono" : "Gecko"} ${version} installed.`,
+      );
+    } catch (err) {
+      setNote(null);
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Could not install ${kind}.`,
+      );
+    } finally {
+      setInstalling(null);
+    }
+  };
 
   const runWinecfg = async (): Promise<void> => {
     setLaunching(true);
@@ -96,6 +127,50 @@ function PrefixSettingsModal({
             Open drive C
           </button>
         </div>
+
+        {isGame && (
+          <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+            <div>
+              <p className="text-sm font-medium text-wine-light">
+                .NET & HTML support
+              </p>
+              <p className="text-xs text-neutral-500">
+                The custom build ships without Mono/Gecko. Install them here if a
+                game needs .NET or an embedded browser.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => installRuntime("mono")}
+                disabled={installing !== null}
+              >
+                <Icon
+                  name={installing === "mono" ? "progress_activity" : "download"}
+                  className={`text-lg ${installing === "mono" ? "animate-spin" : ""}`}
+                />
+                Mono
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => installRuntime("gecko")}
+                disabled={installing !== null}
+              >
+                <Icon
+                  name={installing === "gecko" ? "progress_activity" : "download"}
+                  className={`text-lg ${installing === "gecko" ? "animate-spin" : ""}`}
+                />
+                Gecko
+              </button>
+            </div>
+          </div>
+        )}
+
+        {note && !error && (
+          <p className="mt-3 text-sm text-neutral-400">{note}</p>
+        )}
 
         {error && (
           <p className="mt-3 text-sm text-red-400" role="alert">

@@ -90,6 +90,11 @@ export const api = {
       ipcRenderer.invoke("config:create", name, wineVersion, arch),
     delete: (name: string): Promise<void> =>
       ipcRenderer.invoke("config:delete", name),
+    installRuntime: (
+      name: string,
+      kind: "mono" | "gecko",
+    ): Promise<{ version: string }> =>
+      ipcRenderer.invoke("config:install-runtime", name, kind),
   },
   storage: {
     usage: (): Promise<StorageUsage> => ipcRenderer.invoke("storage:usage"),
