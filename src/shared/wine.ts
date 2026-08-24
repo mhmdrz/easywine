@@ -14,11 +14,20 @@ export interface WineVersion {
 }
 
 export type WineArch = "win64" | "win32";
+
+export type GraphicsBackend = "d3dmetal" | "dxvk";
+
 export interface WineConfig {
   name: string;
   wineVersion: string;
   arch: WineArch;
   createdAt: string;
+  graphicsBackend?: GraphicsBackend;
+}
+
+export interface GraphicsInfo {
+  backend: GraphicsBackend;
+  dxvkAvailable: boolean;
 }
 
 export interface InstalledApp {

@@ -5,6 +5,7 @@ import { homedir } from "os";
 import { join } from "path";
 import type { WineArch } from "@shared/wine";
 import { cxwineBuildDir, prefixesDir } from "./appPaths";
+import { cxwineLaunchEnv } from "./cxwineEnv";
 import { getConfig } from "./configManager";
 import { resolveWineTool } from "./wineManager";
 
@@ -80,6 +81,7 @@ function runWine(
     const child = spawn(wine, args, {
       env: {
         ...process.env,
+        ...cxwineLaunchEnv(),
         WINEPREFIX: prefix,
         WINEARCH: arch,
         WINEDEBUG: "-all",

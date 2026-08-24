@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type {
   CxwineStatus,
+  GraphicsBackend,
+  GraphicsInfo,
   InstalledApp,
   StorageUsage,
   WineArch,
@@ -95,6 +97,10 @@ export const api = {
       kind: "mono" | "gecko",
     ): Promise<{ version: string }> =>
       ipcRenderer.invoke("config:install-runtime", name, kind),
+    graphicsInfo: (name: string): Promise<GraphicsInfo> =>
+      ipcRenderer.invoke("config:graphics-info", name),
+    setGraphics: (name: string, backend: GraphicsBackend): Promise<void> =>
+      ipcRenderer.invoke("config:set-graphics", name, backend),
   },
   storage: {
     usage: (): Promise<StorageUsage> => ipcRenderer.invoke("storage:usage"),

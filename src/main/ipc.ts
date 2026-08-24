@@ -28,6 +28,8 @@ import {
   openCxwineCompiler,
 } from "./cxwine";
 import { installRuntime, type RuntimeKind } from "./prefixRuntime";
+import { getGraphicsInfo, setGraphicsBackend } from "./cxwineBackend";
+import type { GraphicsBackend } from "@shared/wine";
 
 export function registerIpc(): void {
   ipcMain.handle("app:version", () => app.getVersion());
@@ -69,6 +71,14 @@ export function registerIpc(): void {
   ipcMain.handle(
     "config:install-runtime",
     (_event, name: string, kind: RuntimeKind) => installRuntime(name, kind),
+  );
+  ipcMain.handle("config:graphics-info", (_event, name: string) =>
+    getGraphicsInfo(name),
+  );
+  ipcMain.handle(
+    "config:set-graphics",
+    (_event, name: string, backend: GraphicsBackend) =>
+      setGraphicsBackend(name, backend),
   );
 
   ipcMain.handle("cxwine:status", () => getCxwineStatus());

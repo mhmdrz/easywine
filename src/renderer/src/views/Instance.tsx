@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Icon from "../components/Icon";
 import PrefixSettingsModal from "../components/PrefixSettingsModal";
 import { formatVersionId } from "../utils/format";
+import { CXWINE_VERSION_ID } from "@shared/wine";
 import type { InstalledApp, WineConfig } from "@shared/wine";
 
 function formatDate(iso: string): string {
@@ -27,6 +28,11 @@ function Instance(): React.JSX.Element {
   const [removing, setRemoving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+
+  // Game (cxwine) instances live under the Game exclusive view, not Instances.
+  const isGame = config?.wineVersion === CXWINE_VERSION_ID;
+  const backTo = isGame ? "/game-exclusive" : "/";
+  const backLabel = isGame ? "Game exclusive" : "Instances";
 
   const loadApps = useCallback((): void => {
     window.easywine.config.apps(name).then(setApps);
@@ -83,7 +89,7 @@ function Instance(): React.JSX.Element {
     setDeleting(true);
     try {
       await window.easywine.config.delete(name);
-      navigate("/");
+      navigate(backTo);
     } catch (err) {
       setNote(err instanceof Error ? err.message : "Could not delete instance.");
       setDeleting(false);
@@ -114,10 +120,10 @@ function Instance(): React.JSX.Element {
       <button
         type="button"
         className="btn btn--ghost"
-        onClick={() => navigate("/")}
+        onClick={() => navigate(backTo)}
       >
         <Icon name="arrow_back" className="text-lg" />
-        Instances
+        {backLabel}
       </button>
 
       {loading ? (

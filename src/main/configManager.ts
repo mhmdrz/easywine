@@ -5,6 +5,7 @@ import { basename, join, resolve, sep } from "path";
 import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
+import { cxwineLaunchEnv } from "./cxwineEnv";
 import { listInstalled, resolveWineboot, resolveWineTool } from "./wineManager";
 import { parseLnk } from "./lnk";
 import { extractIconDataUri } from "./peIcon";
@@ -28,6 +29,21 @@ export async function getConfig(name: string): Promise<WineConfig | null> {
 
 function prefixDir(name: string): string {
   return join(prefixesDir(), name);
+}
+
+/** Base wine environment for a config; game (cxwine) instances also get the
+ *  D3DMetal launch environment so the Metal backend actually engages. */
+function wineEnv(
+  wineVersion: string,
+  prefix: string,
+  arch: WineArch,
+): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    ...(wineVersion === CXWINE_VERSION_ID ? cxwineLaunchEnv() : {}),
+    WINEPREFIX: prefix,
+    WINEARCH: arch,
+  };
 }
 
 export async function listConfigs(): Promise<WineConfig[]> {
@@ -55,11 +71,13 @@ function initPrefix(
   boot: { cmd: string; args: string[] },
   prefix: string,
   arch: WineArch,
+  extraEnv: NodeJS.ProcessEnv = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(boot.cmd, [...boot.args, "-i"], {
       env: {
         ...process.env,
+        ...extraEnv,
         WINEPREFIX: prefix,
         WINEARCH: arch,
         WINEDEBUG: "-all",
@@ -79,6 +97,44 @@ function initPrefix(
         reject(new Error(`wineboot failed (code ${code}): ${stderr.trim()}`));
     });
   });
+}
+
+/** Write game-friendly defaults into a fresh prefix's registry: Windows 10 and
+ *  Retina (HiDPI) mode for the Mac driver. Runs `wine reg add` to completion. */
+async function applyGameDefaults(
+  wineVersion: string,
+  prefix: string,
+  arch: WineArch,
+  extraEnv: NodeJS.ProcessEnv,
+): Promise<void> {
+  const wine = await resolveWineTool(wineVersion, "wine");
+  if (!wine) return;
+
+  const settings: Array<[string, string, string]> = [
+    ["HKEY_CURRENT_USER\\Software\\Wine", "Version", "win10"],
+    ["HKEY_CURRENT_USER\\Software\\Wine\\Mac Driver", "RetinaMode", "y"],
+  ];
+
+  for (const [key, name, data] of settings) {
+    await new Promise<void>((resolve) => {
+      const child = spawn(
+        wine,
+        ["reg", "add", key, "/v", name, "/t", "REG_SZ", "/d", data, "/f"],
+        {
+          env: {
+            ...process.env,
+            ...extraEnv,
+            WINEPREFIX: prefix,
+            WINEARCH: arch,
+            WINEDEBUG: "-all",
+          },
+          stdio: "ignore",
+        },
+      );
+      child.on("error", () => resolve());
+      child.on("close", () => resolve());
+    });
+  }
 }
 
 export async function createConfig(
@@ -108,6 +164,9 @@ export async function createConfig(
     );
   }
 
+  const isGame = wineVersion === CXWINE_VERSION_ID;
+  const gameEnv: NodeJS.ProcessEnv = isGame ? cxwineLaunchEnv() : {};
+
   const dir = join(configsDir(), trimmed);
   try {
     await fsp.mkdir(dir);
@@ -126,7 +185,7 @@ export async function createConfig(
   }
 
   try {
-    await initPrefix(boot, prefixDir(trimmed), arch);
+    await initPrefix(boot, prefixDir(trimmed), arch, gameEnv);
   } catch (err) {
     await fsp.rm(dir, { recursive: true, force: true, maxRetries: 3 });
     await fsp.rm(prefixDir(trimmed), {
@@ -137,11 +196,21 @@ export async function createConfig(
     throw err;
   }
 
+  // Game instances get sensible defaults (Windows 10 + Retina HiDPI) applied
+  // straight into the prefix registry. Best-effort: a failure here shouldn't
+  // undo an otherwise-created instance.
+  if (isGame) {
+    await applyGameDefaults(wineVersion, prefixDir(trimmed), arch, gameEnv).catch(
+      () => undefined,
+    );
+  }
+
   const config: WineConfig = {
     name: trimmed,
     wineVersion,
     arch,
     createdAt: new Date().toISOString(),
+    ...(isGame ? { graphicsBackend: "d3dmetal" as const } : {}),
   };
   await fsp.writeFile(configFile(trimmed), JSON.stringify(config, null, 2));
   return config;
@@ -269,11 +338,7 @@ export async function runApp(name: string, appPath: string): Promise<void> {
   if (!wine) throw new Error("wine is not available for this Wine version.");
 
   const child = spawn(wine, ["start", "/unix", target], {
-    env: {
-      ...process.env,
-      WINEPREFIX: root,
-      WINEARCH: config.arch,
-    },
+    env: wineEnv(config.wineVersion, root, config.arch),
     detached: true,
     stdio: "ignore",
   });
@@ -388,11 +453,7 @@ export async function runWinecfg(name: string): Promise<void> {
   const args = standalone ? [] : ["winecfg"];
 
   const child = spawn(cmd, args, {
-    env: {
-      ...process.env,
-      WINEPREFIX: prefixDir(name),
-      WINEARCH: config.arch,
-    },
+    env: wineEnv(config.wineVersion, prefixDir(name), config.arch),
     detached: true,
     stdio: "ignore",
   });
@@ -419,11 +480,7 @@ export async function installApp(name: string): Promise<string | null> {
     : [installer];
 
   const child = spawn(wine, args, {
-    env: {
-      ...process.env,
-      WINEPREFIX: prefixDir(name),
-      WINEARCH: config.arch,
-    },
+    env: wineEnv(config.wineVersion, prefixDir(name), config.arch),
     detached: true,
     stdio: "ignore",
   });
