@@ -1,7 +1,7 @@
 import { dialog, shell } from "electron";
 import { spawn } from "child_process";
 import { promises as fsp } from "fs";
-import { basename, join, resolve, sep } from "path";
+import { basename, dirname, join, resolve, sep } from "path";
 import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
@@ -31,8 +31,24 @@ function prefixDir(name: string): string {
   return join(prefixesDir(), name);
 }
 
-/** Base wine environment for a config; game (cxwine) instances also get the
- *  D3DMetal launch environment so the Metal backend actually engages. */
+async function ensurePrefixTemp(prefix: string): Promise<void> {
+  const usersDir = join(prefix, "drive_c", "users");
+  const entries = await fsp
+    .readdir(usersDir, { withFileTypes: true })
+    .catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name === "Public") continue;
+    const home = join(usersDir, entry.name);
+    await fsp.mkdir(join(home, "Temp"), { recursive: true }).catch(() => {});
+    await fsp
+      .mkdir(join(home, "AppData", "Local", "Temp"), { recursive: true })
+      .catch(() => {});
+  }
+  await fsp
+    .mkdir(join(prefix, "drive_c", "windows", "temp"), { recursive: true })
+    .catch(() => {});
+}
+
 function wineEnv(
   wineVersion: string,
   prefix: string,
@@ -99,8 +115,32 @@ function initPrefix(
   });
 }
 
-/** Write game-friendly defaults into a fresh prefix's registry: Windows 10 and
- *  Retina (HiDPI) mode for the Mac driver. Runs `wine reg add` to completion. */
+const DLLOVERRIDE_KEY = "HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides";
+
+// Common gaming DLLs set to native,builtin: a game-bundled or redist-installed
+// copy wins, otherwise Wine's builtin (FAudio for XAudio, its own xinput/dinput,
+// etc.) is used. Harmless when no native copy exists — it just falls back.
+const GAMING_DLLS = [
+  // Input
+  "xinput1_1",
+  "xinput1_2",
+  "xinput1_3",
+  "xinput1_4",
+  "xinput9_1_0",
+  "dinput",
+  "dinput8",
+  // Sound
+  "xaudio2_7",
+  "xaudio2_8",
+  "xaudio2_9",
+  "x3daudio1_7",
+  "xactengine3_7",
+  "xapofx1_5",
+  // Shader compiler (games often bundle / need the redist)
+  "d3dcompiler_43",
+  "d3dcompiler_47",
+];
+
 async function applyGameDefaults(
   wineVersion: string,
   prefix: string,
@@ -113,6 +153,11 @@ async function applyGameDefaults(
   const settings: Array<[string, string, string]> = [
     ["HKEY_CURRENT_USER\\Software\\Wine", "Version", "win10"],
     ["HKEY_CURRENT_USER\\Software\\Wine\\Mac Driver", "RetinaMode", "y"],
+    ...GAMING_DLLS.map((dll): [string, string, string] => [
+      DLLOVERRIDE_KEY,
+      dll,
+      "native,builtin",
+    ]),
   ];
 
   for (const [key, name, data] of settings) {
@@ -196,13 +241,18 @@ export async function createConfig(
     throw err;
   }
 
+  await ensurePrefixTemp(prefixDir(trimmed));
+
   // Game instances get sensible defaults (Windows 10 + Retina HiDPI) applied
   // straight into the prefix registry. Best-effort: a failure here shouldn't
   // undo an otherwise-created instance.
   if (isGame) {
-    await applyGameDefaults(wineVersion, prefixDir(trimmed), arch, gameEnv).catch(
-      () => undefined,
-    );
+    await applyGameDefaults(
+      wineVersion,
+      prefixDir(trimmed),
+      arch,
+      gameEnv,
+    ).catch(() => undefined);
   }
 
   const config: WineConfig = {
@@ -336,6 +386,8 @@ export async function runApp(name: string, appPath: string): Promise<void> {
 
   const wine = await resolveWineTool(config.wineVersion, "wine");
   if (!wine) throw new Error("wine is not available for this Wine version.");
+
+  await ensurePrefixTemp(root);
 
   const child = spawn(wine, ["start", "/unix", target], {
     env: wineEnv(config.wineVersion, root, config.arch),
@@ -475,12 +527,20 @@ export async function installApp(name: string): Promise<string | null> {
   if (result.canceled || result.filePaths.length === 0) return null;
 
   const installer = result.filePaths[0];
+
+  // Guard against "unable to write data to disk" when an installer unpacks to
+  // %TEMP% in a prefix whose temp dirs were never created.
+  await ensurePrefixTemp(prefixDir(name));
+
   const args = installer.toLowerCase().endsWith(".msi")
     ? ["msiexec", "/i", installer]
     : [installer];
 
+  // Run the installer in place, from its own directory, so any adjacent data
+  // files (.cab, .bin, …) resolve exactly as when double-clicked.
   const child = spawn(wine, args, {
     env: wineEnv(config.wineVersion, prefixDir(name), config.arch),
+    cwd: dirname(installer),
     detached: true,
     stdio: "ignore",
   });

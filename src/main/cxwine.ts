@@ -4,6 +4,7 @@ import { constants as fsConstants, promises as fsp } from "fs";
 import { join } from "path";
 import type { CxwineStatus } from "@shared/wine";
 import { cacheDir, cxwineBuildDir, cxwineSourceDir } from "./appPaths";
+import { bundleExternalLibs } from "./bundleLibs";
 
 const HELPER_SCRIPTS = ["build-cxwine.sh", "cxwine-helpers.sh"] as const;
 
@@ -181,7 +182,30 @@ export async function importCxwineBuild(): Promise<{ imported: boolean }> {
   // ditto preserves symlinks, frameworks and xattrs (matches the helper script).
   await run("ditto", [source, build]);
 
+  await fixMoltenVkIcd(build);
+  // Make fonts/TLS self-contained; best-effort, never blocks the import.
+  await bundleExternalLibs(build).catch(() => ({ bundled: [] }));
+
   return { imported: true };
+}
+
+async function fixMoltenVkIcd(build: string): Promise<void> {
+  const icd = join(build, "share", "vulkan", "icd.d", "MoltenVK_icd.json");
+  const lib = join(build, "lib", "libMoltenVK.dylib");
+  const hasLib = await fsp
+    .access(lib)
+    .then(() => true)
+    .catch(() => false);
+  if (!hasLib) return;
+  try {
+    const data = JSON.parse(await fsp.readFile(icd, "utf8"));
+    if (data?.ICD) {
+      data.ICD.library_path = lib;
+      await fsp.writeFile(icd, JSON.stringify(data, null, 2));
+    }
+  } catch {
+    // No ICD (e.g. Vulkan not built) — nothing to fix.
+  }
 }
 
 export async function openCxwineCompiler(): Promise<void> {

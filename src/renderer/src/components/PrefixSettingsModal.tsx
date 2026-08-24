@@ -16,7 +16,9 @@ function PrefixSettingsModal({
   onClose,
 }: PrefixSettingsModalProps): React.JSX.Element {
   const [launching, setLaunching] = useState(false);
-  const [installing, setInstalling] = useState<"mono" | "gecko" | null>(null);
+  const [installing, setInstalling] = useState<
+    "mono" | "gecko" | "vcrun" | null
+  >(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,24 +51,29 @@ function PrefixSettingsModal({
     }
   };
 
-  const installRuntime = async (kind: "mono" | "gecko"): Promise<void> => {
+  const RUNTIME_LABEL: Record<"mono" | "gecko" | "vcrun", string> = {
+    mono: "Mono",
+    gecko: "Gecko",
+    vcrun: "Visual C++ runtimes",
+  };
+
+  const installRuntime = async (
+    kind: "mono" | "gecko" | "vcrun",
+  ): Promise<void> => {
+    const label = RUNTIME_LABEL[kind];
     setInstalling(kind);
     setError(null);
-    setNote(`Installing ${kind === "mono" ? "Mono" : "Gecko"}…`);
+    setNote(`Installing ${label}… (this can take a while)`);
     try {
       const { version } = await window.easywine.config.installRuntime(
         name,
         kind,
       );
-      setNote(
-        `${kind === "mono" ? "Mono" : "Gecko"} ${version} installed.`,
-      );
+      setNote(`${label} ${version} installed.`);
     } catch (err) {
       setNote(null);
       setError(
-        err instanceof Error
-          ? err.message
-          : `Could not install ${kind}.`,
+        err instanceof Error ? err.message : `Could not install ${label}.`,
       );
     } finally {
       setInstalling(null);
@@ -224,6 +231,32 @@ function PrefixSettingsModal({
                 Gecko
               </button>
             </div>
+          </div>
+        )}
+
+        {isGame && (
+          <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+            <div>
+              <p className="text-sm font-medium text-wine-light">
+                Visual C++ runtimes
+              </p>
+              <p className="text-xs text-neutral-500">
+                Installs the Microsoft Visual C++ 2015–2022 redistributables that
+                most games need. Downloads from Microsoft — can take a minute.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn shrink-0"
+              onClick={() => installRuntime("vcrun")}
+              disabled={installing !== null}
+            >
+              <Icon
+                name={installing === "vcrun" ? "progress_activity" : "download"}
+                className={`text-lg ${installing === "vcrun" ? "animate-spin" : ""}`}
+              />
+              Install
+            </button>
           </div>
         )}
 

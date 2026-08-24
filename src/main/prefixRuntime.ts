@@ -9,10 +9,16 @@ import { cxwineLaunchEnv } from "./cxwineEnv";
 import { getConfig } from "./configManager";
 import { resolveWineTool } from "./wineManager";
 
-export type RuntimeKind = "mono" | "gecko";
+export type RuntimeKind = "mono" | "gecko" | "vcrun";
 
 const MONO_BASE = "https://dl.winehq.org/wine/wine-mono";
 const GECKO_BASE = "https://dl.winehq.org/wine/wine-gecko";
+
+// Latest Visual C++ 2015–2022 redistributables (official Microsoft evergreen URLs).
+const VCRUN_URLS: Record<string, string> = {
+  x64: "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+  x86: "https://aka.ms/vs/17/release/vc_redist.x86.exe",
+};
 
 function prefixDir(name: string): string {
   return join(prefixesDir(), name);
@@ -76,6 +82,7 @@ function runWine(
   args: string[],
   prefix: string,
   arch: WineArch,
+  allow: number[] = [0],
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(wine, args, {
@@ -94,7 +101,7 @@ function runWine(
     });
     child.on("error", reject);
     child.on("close", (code) => {
-      if (code === 0) resolve();
+      if (code !== null && allow.includes(code)) resolve();
       else
         reject(
           new Error(
@@ -103,6 +110,31 @@ function runWine(
         );
     });
   });
+}
+
+async function installVcrun(
+  wine: string,
+  prefix: string,
+  arch: WineArch,
+): Promise<{ version: string }> {
+  const cache = join(homedir(), ".cache", "easywine");
+  await fsp.mkdir(cache, { recursive: true });
+
+  const arches = arch === "win64" ? ["x64", "x86"] : ["x86"];
+  for (const a of arches) {
+    const file = join(cache, `vc_redist.${a}.exe`);
+    await ensureCached(file, VCRUN_URLS[a]);
+    // /install /quiet /norestart; tolerate benign codes: 1638 (newer already
+    // installed) and 3010 (reboot required — irrelevant under Wine).
+    await runWine(
+      wine,
+      [file, "/install", "/quiet", "/norestart"],
+      prefix,
+      arch,
+      [0, 1638, 3010],
+    );
+  }
+  return { version: "2015–2022" };
 }
 
 export async function installRuntime(
@@ -114,6 +146,10 @@ export async function installRuntime(
 
   const wine = await resolveWineTool(config.wineVersion, "wine");
   if (!wine) throw new Error("wine is not available for this instance.");
+
+  if (kind === "vcrun") {
+    return installVcrun(wine, prefixDir(name), config.arch);
+  }
 
   const marker = kind === "mono" ? "winemono.php" : "winegecko.php";
   const version = await readVersion(marker);

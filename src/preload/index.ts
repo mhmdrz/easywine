@@ -94,7 +94,7 @@ export const api = {
       ipcRenderer.invoke("config:delete", name),
     installRuntime: (
       name: string,
-      kind: "mono" | "gecko",
+      kind: "mono" | "gecko" | "vcrun",
     ): Promise<{ version: string }> =>
       ipcRenderer.invoke("config:install-runtime", name, kind),
     graphicsInfo: (name: string): Promise<GraphicsInfo> =>
