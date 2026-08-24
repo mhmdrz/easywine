@@ -5,6 +5,7 @@ import type {
   GraphicsBackend,
   GraphicsInfo,
   InstalledApp,
+  LibTips,
   StorageUsage,
   WineArch,
   WineConfig,
@@ -40,6 +41,8 @@ export const api = {
     /** Open the compile helper script in Terminal. */
     openCompiler: (): Promise<void> =>
       ipcRenderer.invoke("cxwine:open-compiler"),
+    /** System libraries the build needs: bundled / OS / Homebrew status. */
+    libTips: (): Promise<LibTips> => ipcRenderer.invoke("cxwine:lib-tips"),
   },
   wine: {
     /** Full catalog scraped from WineHQ (cached). */

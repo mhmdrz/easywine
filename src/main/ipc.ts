@@ -28,6 +28,7 @@ import {
   openCxwineCompiler,
 } from "./cxwine";
 import { installRuntime, type RuntimeKind } from "./prefixRuntime";
+import { getLibTips } from "./libTips";
 import { getGraphicsInfo, setGraphicsBackend } from "./cxwineBackend";
 import type { GraphicsBackend } from "@shared/wine";
 
@@ -85,6 +86,7 @@ export function registerIpc(): void {
   ipcMain.handle("cxwine:import-source", () => importCxwineSource());
   ipcMain.handle("cxwine:import-build", () => importCxwineBuild());
   ipcMain.handle("cxwine:open-compiler", () => openCxwineCompiler());
+  ipcMain.handle("cxwine:lib-tips", () => getLibTips());
   ipcMain.handle("app:open-external", (_event, url: string) => {
     if (/^https:\/\//i.test(url)) return shell.openExternal(url);
     return Promise.resolve();

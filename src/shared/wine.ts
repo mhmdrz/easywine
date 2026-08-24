@@ -60,3 +60,18 @@ export interface CxwineStatus {
   buildReady: boolean;
   redistReady: boolean;
 }
+
+export type LibSource = "bundled" | "os" | "brew";
+
+export interface LibTip {
+  name: string;
+  purpose: string;
+  source: LibSource;
+  formula?: string;
+  present: boolean;
+}
+
+export interface LibTips {
+  brewPresent: boolean;
+  tips: LibTip[];
+}

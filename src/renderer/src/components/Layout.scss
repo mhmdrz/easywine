@@ -16,9 +16,26 @@
     color: $color-light;
   }
 
+  &__footer {
+    @apply mt-auto flex items-center justify-between gap-2 px-2 py-2;
+  }
+
   &__version {
-    @apply mt-auto px-2 py-2 text-xs font-medium;
+    @apply text-xs font-medium;
     color: rgba($color-light, 0.4);
+  }
+
+  &__github {
+    @apply flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium;
+    color: rgba($color-light, 0.55);
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+
+    &:hover {
+      background-color: $color-gray-800;
+      color: $color-light;
+    }
   }
 }
 

@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import Icon from "../components/Icon";
 import CreateGameInstanceModal from "../components/CreateGameInstanceModal";
 import { CXWINE_VERSION_ID } from "@shared/wine";
-import type { CxwineStatus, WineConfig } from "@shared/wine";
+import type { CxwineStatus, LibTips, WineConfig } from "@shared/wine";
+import LibraryTips from "../components/LibraryTips";
 import "./GameExclusive.scss";
 
 const CROSSOVER_URL = "https://www.codeweavers.com/crossover/source";
@@ -49,14 +50,17 @@ function GameExclusive(): React.JSX.Element {
   const [showSetup, setShowSetup] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [libTips, setLibTips] = useState<LibTips | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
-    const [next, list] = await Promise.all([
+    const [next, list, tips] = await Promise.all([
       window.easywine.cxwine.status(),
       window.easywine.config.list(),
+      window.easywine.cxwine.libTips(),
     ]);
     setStatus(next);
     setConfigs(list.filter((c) => c.wineVersion === CXWINE_VERSION_ID));
+    setLibTips(tips);
   }, []);
 
   useEffect(() => {
@@ -378,6 +382,8 @@ function GameExclusive(): React.JSX.Element {
           )}
         </>
       )}
+
+      <LibraryTips tips={libTips} />
 
       {modalOpen && (
         <CreateGameInstanceModal

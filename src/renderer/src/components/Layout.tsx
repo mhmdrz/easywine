@@ -17,6 +17,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/settings", label: "Settings", icon: "settings" },
 ];
 
+const GITHUB_URL = "https://github.com/mhmdrz/easywine";
+
 function Layout(): React.JSX.Element {
   const [version, setVersion] = useState("");
 
@@ -46,9 +48,19 @@ function Layout(): React.JSX.Element {
             </NavLink>
           ))}
         </nav>
-        {version && (
-          <div className="sidebar__version">v{version}</div>
-        )}
+        <div className="sidebar__footer">
+          <span className="sidebar__version">{version ? `v${version}` : ""}</span>
+          <button
+            type="button"
+            className="sidebar__github"
+            title="View on GitHub"
+            aria-label="View on GitHub"
+            onClick={() => window.easywine.app.openExternal(GITHUB_URL)}
+          >
+            <Icon name="code" className="text-lg" />
+            GitHub
+          </button>
+        </div>
       </aside>
       <main className="content">
         <Outlet />
