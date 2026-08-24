@@ -11,6 +11,7 @@ import {
 } from "./wineManager";
 import {
   createConfig,
+  deleteConfig,
   getConfig,
   installApp,
   listApps,
@@ -63,6 +64,7 @@ export function registerIpc(): void {
     (_event, name: string, wineVersion: string, arch: WineArch) =>
       createConfig(name, wineVersion, arch),
   );
+  ipcMain.handle("config:delete", (_event, name: string) => deleteConfig(name));
 
   ipcMain.handle("cxwine:status", () => getCxwineStatus());
   ipcMain.handle("cxwine:import-source", () => importCxwineSource());

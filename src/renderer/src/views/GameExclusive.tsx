@@ -48,6 +48,7 @@ function GameExclusive(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
     const [next, list] = await Promise.all([
@@ -64,6 +65,20 @@ function GameExclusive(): React.JSX.Element {
 
   const openLink = (url: string): void => {
     window.easywine.app.openExternal(url);
+  };
+
+  const handleDelete = async (name: string): Promise<void> => {
+    const ok = window.confirm(
+      `Delete instance “${name}”? This permanently removes its Wine prefix and all installed apps.`,
+    );
+    if (!ok) return;
+    setDeleting(name);
+    try {
+      await window.easywine.config.delete(name);
+      setConfigs((prev) => prev.filter((c) => c.name !== name));
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const act = async (
@@ -160,9 +175,30 @@ function GameExclusive(): React.JSX.Element {
                       filled
                       className="text-xl text-wine-accent"
                     />
-                    <h3 className="text-lg font-semibold text-wine-light">
+                    <h3 className="min-w-0 flex-1 truncate text-lg font-semibold text-wine-light">
                       {config.name}
                     </h3>
+                    <button
+                      type="button"
+                      className="icon-btn shrink-0 text-neutral-400 hover:text-red-400"
+                      title={`Delete ${config.name}`}
+                      aria-label={`Delete ${config.name}`}
+                      onClick={() => handleDelete(config.name)}
+                      disabled={deleting === config.name}
+                    >
+                      <Icon
+                        name={
+                          deleting === config.name
+                            ? "progress_activity"
+                            : "delete"
+                        }
+                        className={
+                          deleting === config.name
+                            ? "animate-spin text-lg"
+                            : "text-lg"
+                        }
+                      />
+                    </button>
                   </div>
                   <p className="text-sm text-neutral-400">
                     D3DMetal · {config.arch}

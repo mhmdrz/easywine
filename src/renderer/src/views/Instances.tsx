@@ -21,6 +21,7 @@ function Instances(): React.JSX.Element {
   const [configs, setConfigs] = useState<WineConfig[]>([]);
   const [installed, setInstalled] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     window.easywine.config
@@ -33,6 +34,20 @@ function Instances(): React.JSX.Element {
   const openModal = async (): Promise<void> => {
     setInstalled(await window.easywine.wine.listInstalled());
     setModalOpen(true);
+  };
+
+  const handleDelete = async (name: string): Promise<void> => {
+    const ok = window.confirm(
+      `Delete instance “${name}”? This permanently removes its Wine prefix and all installed apps.`,
+    );
+    if (!ok) return;
+    setDeleting(name);
+    try {
+      await window.easywine.config.delete(name);
+      setConfigs((prev) => prev.filter((c) => c.name !== name));
+    } finally {
+      setDeleting(null);
+    }
   };
 
   return (
@@ -60,9 +75,26 @@ function Instances(): React.JSX.Element {
             <div key={config.name} className="card flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <Icon name="folder" filled className="text-xl text-wine-accent" />
-                <h3 className="text-lg font-semibold text-wine-light">
+                <h3 className="min-w-0 flex-1 truncate text-lg font-semibold text-wine-light">
                   {config.name}
                 </h3>
+                <button
+                  type="button"
+                  className="icon-btn shrink-0 text-neutral-400 hover:text-red-400"
+                  title={`Delete ${config.name}`}
+                  aria-label={`Delete ${config.name}`}
+                  onClick={() => handleDelete(config.name)}
+                  disabled={deleting === config.name}
+                >
+                  <Icon
+                    name={deleting === config.name ? "progress_activity" : "delete"}
+                    className={
+                      deleting === config.name
+                        ? "animate-spin text-lg"
+                        : "text-lg"
+                    }
+                  />
+                </button>
               </div>
               <p className="text-sm text-neutral-400">
                 Wine {formatVersionId(config.wineVersion)} · {config.arch}

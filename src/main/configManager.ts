@@ -135,6 +135,22 @@ export async function createConfig(
   return config;
 }
 
+export async function deleteConfig(name: string): Promise<void> {
+  if (!NAME_RE.test(name)) {
+    throw new Error("Invalid instance name.");
+  }
+  await fsp.rm(join(configsDir(), name), {
+    recursive: true,
+    force: true,
+    maxRetries: 3,
+  });
+  await fsp.rm(prefixDir(name), {
+    recursive: true,
+    force: true,
+    maxRetries: 3,
+  });
+}
+
 async function collectShortcuts(dir: string): Promise<InstalledApp[]> {
   const entries = await fsp
     .readdir(dir, { withFileTypes: true })

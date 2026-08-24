@@ -25,6 +25,7 @@ function Instance(): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const loadApps = useCallback((): void => {
@@ -71,6 +72,21 @@ function Instance(): React.JSX.Element {
       setNote(err instanceof Error ? err.message : "Could not remove the app.");
     } finally {
       setRemoving(null);
+    }
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    const ok = window.confirm(
+      `Delete instance “${name}”? This permanently removes its Wine prefix and all installed apps.`,
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await window.easywine.config.delete(name);
+      navigate("/");
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Could not delete instance.");
+      setDeleting(false);
     }
   };
 
@@ -131,14 +147,28 @@ function Instance(): React.JSX.Element {
                 created {formatDate(config.createdAt)}
               </p>
             </div>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Icon name="settings" className="text-lg" />
-              Settings
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                className="btn btn--ghost text-neutral-300 hover:text-red-400"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                <Icon
+                  name={deleting ? "progress_activity" : "delete"}
+                  className={`text-lg ${deleting ? "animate-spin" : ""}`}
+                />
+                Delete
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Icon name="settings" className="text-lg" />
+                Settings
+              </button>
+            </div>
           </div>
 
           <div className="card mt-6">

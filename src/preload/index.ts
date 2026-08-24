@@ -88,6 +88,8 @@ export const api = {
       arch: WineArch,
     ): Promise<WineConfig> =>
       ipcRenderer.invoke("config:create", name, wineVersion, arch),
+    delete: (name: string): Promise<void> =>
+      ipcRenderer.invoke("config:delete", name),
   },
   storage: {
     usage: (): Promise<StorageUsage> => ipcRenderer.invoke("storage:usage"),
