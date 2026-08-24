@@ -23,6 +23,7 @@ export interface WineConfig {
   arch: WineArch;
   createdAt: string;
   graphicsBackend?: GraphicsBackend;
+  metalHud?: boolean;
 }
 
 export interface GraphicsInfo {

@@ -2,8 +2,11 @@ import { app, shell, BrowserWindow } from "electron";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { registerIpc } from "./ipc";
+import { buildAppMenu } from "./menu";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
+
+app.setName("EasyWine");
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -13,7 +16,6 @@ function createWindow(): void {
     minHeight: 480,
     show: false,
     backgroundColor: "#1a1a1a",
-    autoHideMenuBar: true,
     title: "EasyWine",
     webPreferences: {
       preload: join(__dirname, "../preload/index.mjs"),
@@ -39,6 +41,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   registerIpc();
+  buildAppMenu();
   createWindow();
 
   app.on("activate", () => {

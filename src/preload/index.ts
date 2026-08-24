@@ -28,6 +28,9 @@ export const api = {
     /** Open an https URL in the user's default browser. */
     openExternal: (url: string): Promise<void> =>
       ipcRenderer.invoke("app:open-external", url),
+    /** Check GitHub releases for a newer version (shows a native dialog). */
+    checkForUpdates: (): Promise<void> =>
+      ipcRenderer.invoke("app:check-updates"),
   },
   cxwine: {
     /** State of the custom CrossOver + D3DMetal Wine build. */
@@ -95,6 +98,8 @@ export const api = {
       ipcRenderer.invoke("config:create", name, wineVersion, arch),
     delete: (name: string): Promise<void> =>
       ipcRenderer.invoke("config:delete", name),
+    setMetalHud: (name: string, enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke("config:set-metal-hud", name, enabled),
     installRuntime: (
       name: string,
       kind: "mono" | "gecko" | "vcrun",

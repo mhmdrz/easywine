@@ -6,6 +6,8 @@ import type { StorageUsage } from "@shared/wine";
 function Settings(): React.JSX.Element {
   const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [version, setVersion] = useState("");
+  const [checking, setChecking] = useState(false);
 
   const refresh = useCallback((): void => {
     window.easywine.storage.usage().then(setUsage);
@@ -13,7 +15,17 @@ function Settings(): React.JSX.Element {
 
   useEffect(() => {
     refresh();
+    window.easywine.app.version().then(setVersion);
   }, [refresh]);
+
+  const handleCheckUpdates = async (): Promise<void> => {
+    setChecking(true);
+    try {
+      await window.easywine.app.checkForUpdates();
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const handleClearCache = async (): Promise<void> => {
     setClearing(true);
@@ -72,6 +84,44 @@ function Settings(): React.JSX.Element {
               >
                 <Icon name="folder_open" className="text-lg" />
                 Open folder
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card mt-6">
+        <div className="flex items-start gap-4">
+          <Icon name="info" className="text-3xl text-wine-accent" />
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-wine-light">About</h2>
+            <p className="mt-1 text-sm text-neutral-400">
+              EasyWine {version ? `v${version}` : ""}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+              <button
+                type="button"
+                className="btn"
+                onClick={handleCheckUpdates}
+                disabled={checking}
+              >
+                <Icon
+                  name={checking ? "progress_activity" : "update"}
+                  className={`text-lg ${checking ? "animate-spin" : ""}`}
+                />
+                {checking ? "Checking…" : "Check for updates"}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() =>
+                  window.easywine.app.openExternal(
+                    "https://github.com/mhmdrz/easywine/releases",
+                  )
+                }
+              >
+                <Icon name="open_in_new" className="text-lg" />
+                Releases
               </button>
             </div>
           </div>

@@ -19,6 +19,7 @@ import {
   openDriveC,
   runApp,
   runWinecfg,
+  setMetalHud,
   uninstallApp,
 } from "./configManager";
 import {
@@ -29,6 +30,7 @@ import {
 } from "./cxwine";
 import { installRuntime, type RuntimeKind } from "./prefixRuntime";
 import { getLibTips } from "./libTips";
+import { checkForUpdates } from "./updates";
 import { getGraphicsInfo, setGraphicsBackend } from "./cxwineBackend";
 import type { GraphicsBackend } from "@shared/wine";
 
@@ -70,6 +72,10 @@ export function registerIpc(): void {
   );
   ipcMain.handle("config:delete", (_event, name: string) => deleteConfig(name));
   ipcMain.handle(
+    "config:set-metal-hud",
+    (_event, name: string, enabled: boolean) => setMetalHud(name, enabled),
+  );
+  ipcMain.handle(
     "config:install-runtime",
     (_event, name: string, kind: RuntimeKind) => installRuntime(name, kind),
   );
@@ -91,6 +97,7 @@ export function registerIpc(): void {
     if (/^https:\/\//i.test(url)) return shell.openExternal(url);
     return Promise.resolve();
   });
+  ipcMain.handle("app:check-updates", () => checkForUpdates(true));
 
   ipcMain.handle("storage:usage", () => getUsage());
   ipcMain.handle("storage:clear-cache", () => clearCache());

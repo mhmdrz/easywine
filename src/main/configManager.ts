@@ -389,12 +389,25 @@ export async function runApp(name: string, appPath: string): Promise<void> {
 
   await ensurePrefixTemp(root);
 
+  const env = wineEnv(config.wineVersion, root, config.arch);
+  if (config.metalHud) env.MTL_HUD_ENABLED = "1";
+
   const child = spawn(wine, ["start", "/unix", target], {
-    env: wineEnv(config.wineVersion, root, config.arch),
+    env,
     detached: true,
     stdio: "ignore",
   });
   child.unref();
+}
+
+export async function setMetalHud(
+  name: string,
+  enabled: boolean,
+): Promise<void> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+  const updated: WineConfig = { ...config, metalHud: enabled };
+  await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
 }
 
 function splitCommandLine(input: string): string[] {
