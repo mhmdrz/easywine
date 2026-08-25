@@ -2,6 +2,7 @@ import { app, Menu, shell, type MenuItemConstructorOptions } from "electron";
 import { checkForUpdates } from "./updates";
 
 const GITHUB_URL = "https://github.com/mhmdrz/easywine";
+const AUTHOR_GITHUB_URL = "https://github.com/mhmdrz";
 
 export function buildAppMenu(): void {
   const isMac = process.platform === "darwin";
@@ -19,6 +20,11 @@ export function buildAppMenu(): void {
             submenu: [
               { role: "about" },
               checkForUpdatesItem,
+              { type: "separator" },
+              {
+                label: "Developer on GitHub",
+                click: () => void shell.openExternal(AUTHOR_GITHUB_URL),
+              },
               { type: "separator" },
               { role: "services" },
               { type: "separator" },

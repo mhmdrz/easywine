@@ -10,10 +10,10 @@ app.setName("EasyWine");
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    minWidth: 640,
-    minHeight: 480,
+    width: 1280,
+    height: 860,
+    minWidth: 800,
+    minHeight: 600,
     show: false,
     backgroundColor: "#1a1a1a",
     title: "EasyWine",
