@@ -24,6 +24,20 @@ EasyWine lets you create and manage isolated Wine prefixes ("instances"), instal
 - Verified in‑game with **Stronghold Crusader: Definitive Edition**.
 - **Electron 43** / Node 22.
 
+## Installing a release
+
+Download the latest `EasyWine-<version>-arm64.dmg` from the [Releases page](https://github.com/mhmdrz/easywine/releases), open it, and drag **EasyWine** into **Applications**.
+
+EasyWine is **not code‑signed or notarized**, so on first launch macOS Gatekeeper will block it. To open it anyway:
+
+- **Right‑click** (or Control‑click) EasyWine in Applications → **Open** → **Open** in the dialog. You only need to do this once.
+
+If macOS still refuses (e.g. "EasyWine is damaged and can't be opened"), clear the quarantine flag from Terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/EasyWine.app
+```
+
 ## Getting started
 
 ```bash

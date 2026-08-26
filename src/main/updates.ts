@@ -4,10 +4,24 @@ const REPO = "mhmdrz/easywine";
 const RELEASES_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const RELEASES_PAGE = `https://github.com/${REPO}/releases`;
 
+interface ReleaseAsset {
+  name?: string;
+  browser_download_url?: string;
+}
+
 interface Release {
   tag_name?: string;
   html_url?: string;
   name?: string;
+  assets?: ReleaseAsset[];
+}
+
+function dmgAsset(release: Release): ReleaseAsset | undefined {
+  const assets = release.assets ?? [];
+  return (
+    assets.find((a) => /arm64.*\.dmg$/i.test(a.name ?? "")) ??
+    assets.find((a) => (a.name ?? "").toLowerCase().endsWith(".dmg"))
+  );
 }
 
 function fetchJson(url: string): Promise<Release> {
@@ -43,8 +57,14 @@ function fetchJson(url: string): Promise<Release> {
 
 /** Compare dotted versions; returns true when `a` is strictly newer than `b`. */
 function isNewer(a: string, b: string): boolean {
-  const pa = a.replace(/^v/, "").split(/[.-]/).map((n) => parseInt(n, 10) || 0);
-  const pb = b.replace(/^v/, "").split(/[.-]/).map((n) => parseInt(n, 10) || 0);
+  const pa = a
+    .replace(/^v/, "")
+    .split(/[.-]/)
+    .map((n) => parseInt(n, 10) || 0);
+  const pb = b
+    .replace(/^v/, "")
+    .split(/[.-]/)
+    .map((n) => parseInt(n, 10) || 0);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const x = pa[i] ?? 0;
     const y = pb[i] ?? 0;
@@ -67,16 +87,21 @@ export async function checkForUpdates(interactive: boolean): Promise<void> {
     const release = await fetchJson(RELEASES_API);
     const latest = (release.tag_name ?? "").replace(/^v/, "");
     if (latest && isNewer(latest, current)) {
+      const dmg = dmgAsset(release);
       const result = await dialog.showMessageBox(win, {
         type: "info",
         message: `EasyWine ${latest} is available`,
-        detail: `You have ${current}. Open the releases page to download it?`,
-        buttons: ["Open Releases", "Later"],
+        detail: dmg
+          ? `You have ${current}. Download the new version (.dmg)?`
+          : `You have ${current}. Open the releases page to download it?`,
+        buttons: [dmg ? "Download" : "Open Releases", "Later"],
         defaultId: 0,
         cancelId: 1,
       });
       if (result.response === 0) {
-        await shell.openExternal(release.html_url ?? RELEASES_PAGE);
+        await shell.openExternal(
+          dmg?.browser_download_url ?? release.html_url ?? RELEASES_PAGE,
+        );
       }
     } else if (interactive) {
       await dialog.showMessageBox(win, {
@@ -91,9 +116,7 @@ export async function checkForUpdates(interactive: boolean): Promise<void> {
     const noReleases = err instanceof Error && err.message === "NO_RELEASES";
     await dialog.showMessageBox(win, {
       type: noReleases ? "info" : "warning",
-      message: noReleases
-        ? "No releases yet"
-        : "Couldn’t check for updates",
+      message: noReleases ? "No releases yet" : "Couldn’t check for updates",
       detail: noReleases
         ? `EasyWine ${current} — there are no published releases to compare against yet.`
         : err instanceof Error

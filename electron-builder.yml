@@ -12,9 +12,20 @@ mac:
   category: public.app-category.utilities
   icon: build/icon.icns
   target:
-    - target: dir
+    - target: dmg
       arch:
         - arm64
   identity: null
   hardenedRuntime: false
   gatekeeperAssess: false
+dmg:
+  title: ${productName} ${version}
+  artifactName: ${productName}-${version}-arm64.${ext}
+  writeUpdateInfo: false
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
