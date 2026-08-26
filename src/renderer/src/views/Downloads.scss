@@ -1,0 +1,20 @@
+@use "../styles/variables" as *;
+
+.chip {
+  @apply rounded-full px-3 py-1 text-sm font-medium;
+  background-color: $color-gray-800;
+  color: rgba($text, 0.7);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    color: $color-light;
+  }
+
+  &--active {
+    background-color: $color-primary;
+    color: $color-light;
+  }
+}

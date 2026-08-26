@@ -17,11 +17,13 @@
 *.xcodeproj
 /.idea/
 /dist/
+/out/
 node_modules/
 SHASUMS256.txt
 **/package-lock.json
 compile_commands.json
 .envrc
+*.claude
 
 # npm package
 /npm/dist

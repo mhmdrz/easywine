@@ -1,0 +1,81 @@
+@use "variables" as *;
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: $font-sans;
+  background-color: $bg;
+  color: $text;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  @apply rounded-2xl p-6 shadow-lg;
+  background-color: $surface;
+  border: 1px solid $border;
+}
+
+.placeholder {
+  @apply rounded-lg border border-dashed px-4 py-6 text-sm;
+  border-color: $border;
+  color: rgba($text, 0.6);
+}
+
+.icon-btn {
+  @apply inline-flex items-center justify-center rounded-lg p-2;
+  color: rgba($text, 0.6);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+
+  &:hover {
+    color: $color-accent;
+    background-color: rgba($color-accent, 0.1);
+  }
+}
+
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  background-color: rgba($color-black, 0.6);
+}
+
+.modal {
+  @apply w-full max-w-lg;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold;
+  background-color: $color-primary;
+  color: $color-light;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+
+  &:hover {
+    background-color: $color-accent;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  &--ghost {
+    background-color: transparent;
+    border: 1px solid $border;
+    color: $text;
+
+    &:hover {
+      background-color: $color-gray-800;
+    }
+  }
+}
