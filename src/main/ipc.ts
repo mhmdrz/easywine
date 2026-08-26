@@ -1,5 +1,5 @@
 import { app, ipcMain, shell } from "electron";
-import type { WineArch } from "@shared/wine";
+import type { GameOptions, WineArch } from "@shared/wine";
 import { appDir } from "./appPaths";
 import { getCatalog } from "./wineCatalog";
 import { clearCache, getUsage } from "./storage";
@@ -19,6 +19,8 @@ import {
   openDriveC,
   runApp,
   runWinecfg,
+  setDisplayMode,
+  setGameOptions,
   setMetalHud,
   uninstallApp,
 } from "./configManager";
@@ -74,6 +76,15 @@ export function registerIpc(): void {
   ipcMain.handle(
     "config:set-metal-hud",
     (_event, name: string, enabled: boolean) => setMetalHud(name, enabled),
+  );
+  ipcMain.handle(
+    "config:set-options",
+    (_event, name: string, patch: GameOptions) => setGameOptions(name, patch),
+  );
+  ipcMain.handle(
+    "config:set-display",
+    (_event, name: string, virtualDesktop: boolean, size: string) =>
+      setDisplayMode(name, virtualDesktop, size),
   );
   ipcMain.handle(
     "config:install-runtime",

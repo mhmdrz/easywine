@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Icon from "../components/Icon";
+import GameBackendCard from "../components/GameBackendCard";
 import PrefixSettingsModal from "../components/PrefixSettingsModal";
 import { formatVersionId } from "../utils/format";
 import { CXWINE_VERSION_ID } from "@shared/wine";
@@ -260,6 +261,8 @@ function Instance(): React.JSX.Element {
               </ul>
             )}
           </div>
+
+          {isGame && <GameBackendCard name={config.name} />}
         </>
       )}
 

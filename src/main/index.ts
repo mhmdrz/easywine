@@ -6,7 +6,30 @@ import { buildAppMenu } from "./menu";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
+const BANNER = `
+███▄ ▄███▓ ██░ ██  ███▄ ▄███▓▓█████▄  ██▀███  ▒███████▒
+▓██▒▀█▀ ██▒▓██░ ██▒▓██▒▀█▀ ██▒▒██▀ ██▌▓██ ▒ ██▒▒ ▒ ▒ ▄▀░
+▓██    ▓██░▒██▀▀██░▓██    ▓██░░██   █▌▓██ ░▄█ ▒░ ▒ ▄▀▒░
+▒██    ▒██ ░▓█ ░██ ▒██    ▒██ ░▓█▄   ▌▒██▀▀█▄    ▄▀▒   ░
+▒██▒   ░██▒░▓█▒░██▓▒██▒   ░██▒░▒████▓ ░██▓ ▒██▒▒███████▒
+░ ▒░   ░  ░ ▒ ░░▒░▒░ ▒░   ░  ░ ▒▒▓  ▒ ░ ▒▓ ░▒▓░░▒▒ ▓░▒░▒
+░  ░      ░ ▒ ░▒░ ░░  ░      ░ ░ ▒  ▒   ░▒ ░ ▒░░░▒ ▒ ░ ▒
+░      ░    ░  ░░ ░░      ░    ░ ░  ░   ░░   ░ ░ ░ ░ ░ ░
+       ░    ░  ░  ░       ░      ░       ░       ░ ░
+                               ░               ░
+`;
+console.log(BANNER);
+
 app.setName("EasyWine");
+
+// Credit the GitHub handle rather than the real name in the macOS About panel.
+app.setAboutPanelOptions({
+  applicationName: "EasyWine",
+  version: app.getVersion(),
+  copyright: "© mhmdrz",
+  authors: ["mhmdrz"],
+  website: "https://github.com/mhmdrz",
+});
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({

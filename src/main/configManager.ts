@@ -2,7 +2,12 @@ import { dialog, shell } from "electron";
 import { spawn } from "child_process";
 import { promises as fsp } from "fs";
 import { basename, dirname, join, resolve, sep } from "path";
-import type { InstalledApp, WineArch, WineConfig } from "@shared/wine";
+import type {
+  GameOptions,
+  InstalledApp,
+  WineArch,
+  WineConfig,
+} from "@shared/wine";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import { configsDir, prefixesDir } from "./appPaths";
 import { cxwineLaunchEnv } from "./cxwineEnv";
@@ -390,6 +395,23 @@ export async function runApp(name: string, appPath: string): Promise<void> {
   await ensurePrefixTemp(root);
 
   const env = wineEnv(config.wineVersion, root, config.arch);
+  if (config.wineVersion === CXWINE_VERSION_ID) {
+    env.D3DM_ENABLE_METALFX = config.metalFx === false ? "0" : "1";
+    env.ROSETTA_ADVERTISE_AVX = config.rosettaAvx === false ? "0" : "1";
+    env.WINEESYNC = config.esync ? "1" : "0";
+    env.WINEDEBUG = config.debugLogging ? "warn+all,fixme+all" : "-all";
+    if (config.dxvkHud) env.DXVK_HUD = "fps,frametimes,gpuload,version";
+    if (config.frameRateCap && config.frameRateCap > 0) {
+      // D3DMetal reads D3DM_MAX_FPS, DXVK reads DXVK_FRAME_RATE. Only one
+      // backend is active at a time, so setting both is harmless and makes the
+      // cap work regardless of the selected graphics backend.
+      env.D3DM_MAX_FPS = String(config.frameRateCap);
+      env.DXVK_FRAME_RATE = String(config.frameRateCap);
+    }
+    if (config.d3dmHudStats) env.D3DM_SHOW_HUD_STATS = "1";
+    if (config.d3dmDxr) env.D3DM_SUPPORT_DXR = "1";
+    if (config.d3dmMtl4) env.D3DM_MTL4 = "1";
+  }
   if (config.metalHud) env.MTL_HUD_ENABLED = "1";
 
   const child = spawn(wine, ["start", "/unix", target], {
@@ -408,6 +430,102 @@ export async function setMetalHud(
   if (!config) throw new Error(`Unknown instance: ${name}`);
   const updated: WineConfig = { ...config, metalHud: enabled };
   await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
+}
+
+export async function setGameOptions(
+  name: string,
+  patch: GameOptions,
+): Promise<WineConfig> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+  const updated: WineConfig = { ...config, ...patch };
+  await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
+  return updated;
+}
+
+const DESKTOP_KEY = "HKEY_CURRENT_USER\\Software\\Wine\\Explorer";
+const DESKTOPS_KEY = `${DESKTOP_KEY}\\Desktops`;
+const DESKTOP_NAME = "Default";
+const RES_RE = /^\d{3,5}x\d{3,5}$/;
+
+function regCommand(
+  wineVersion: string,
+  prefix: string,
+  arch: WineArch,
+  wine: string,
+  args: string[],
+): Promise<void> {
+  return new Promise((resolve) => {
+    const child = spawn(wine, args, {
+      env: {
+        ...process.env,
+        ...(wineVersion === CXWINE_VERSION_ID ? cxwineLaunchEnv() : {}),
+        WINEPREFIX: prefix,
+        WINEARCH: arch,
+        WINEDEBUG: "-all",
+      },
+      stdio: "ignore",
+    });
+    child.on("error", () => resolve());
+    child.on("close", () => resolve());
+  });
+}
+
+export async function setDisplayMode(
+  name: string,
+  virtualDesktop: boolean,
+  size: string,
+): Promise<WineConfig> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+  if (virtualDesktop && !RES_RE.test(size)) {
+    throw new Error(`Invalid resolution: ${size}`);
+  }
+
+  const wine = await resolveWineTool(config.wineVersion, "wine");
+  if (!wine) throw new Error("wine is not available for this Wine version.");
+  const prefix = prefixDir(name);
+  await ensurePrefixTemp(prefix);
+
+  if (virtualDesktop) {
+    await regCommand(config.wineVersion, prefix, config.arch, wine, [
+      "reg",
+      "add",
+      DESKTOPS_KEY,
+      "/v",
+      DESKTOP_NAME,
+      "/t",
+      "REG_SZ",
+      "/d",
+      size,
+      "/f",
+    ]);
+    await regCommand(config.wineVersion, prefix, config.arch, wine, [
+      "reg",
+      "add",
+      DESKTOP_KEY,
+      "/v",
+      "Desktop",
+      "/t",
+      "REG_SZ",
+      "/d",
+      DESKTOP_NAME,
+      "/f",
+    ]);
+  } else {
+    await regCommand(config.wineVersion, prefix, config.arch, wine, [
+      "reg",
+      "delete",
+      DESKTOP_KEY,
+      "/v",
+      "Desktop",
+      "/f",
+    ]);
+  }
+
+  const updated: WineConfig = { ...config, virtualDesktop, desktopSize: size };
+  await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
+  return updated;
 }
 
 function splitCommandLine(input: string): string[] {

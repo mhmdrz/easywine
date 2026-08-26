@@ -24,6 +24,30 @@ export interface WineConfig {
   createdAt: string;
   graphicsBackend?: GraphicsBackend;
   metalHud?: boolean;
+  metalFx?: boolean;
+  rosettaAvx?: boolean;
+  esync?: boolean;
+  dxvkHud?: boolean;
+  debugLogging?: boolean;
+  frameRateCap?: number;
+  d3dmHudStats?: boolean;
+  d3dmDxr?: boolean;
+  d3dmMtl4?: boolean;
+  virtualDesktop?: boolean;
+  desktopSize?: string;
+}
+
+export interface GameOptions {
+  metalHud?: boolean;
+  metalFx?: boolean;
+  rosettaAvx?: boolean;
+  esync?: boolean;
+  dxvkHud?: boolean;
+  debugLogging?: boolean;
+  frameRateCap?: number;
+  d3dmHudStats?: boolean;
+  d3dmDxr?: boolean;
+  d3dmMtl4?: boolean;
 }
 
 export interface GraphicsInfo {

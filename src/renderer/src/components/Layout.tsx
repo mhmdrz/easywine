@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { CXWINE_VERSION_ID } from "@shared/wine";
 import Icon from "./Icon";
 import "./Layout.scss";
 
@@ -19,8 +20,42 @@ const NAV_ITEMS: NavItem[] = [
 
 const GITHUB_URL = "https://github.com/mhmdrz/easywine";
 
+function useActiveNav(): string {
+  const { pathname } = useLocation();
+  const [instanceParent, setInstanceParent] = useState<string | null>(null);
+
+  const instanceMatch = pathname.match(/^\/instance\/([^/]+)/);
+  const instanceName = instanceMatch
+    ? decodeURIComponent(instanceMatch[1])
+    : null;
+
+  useEffect(() => {
+    if (!instanceName) {
+      setInstanceParent(null);
+      return;
+    }
+    let cancelled = false;
+    window.easywine.config.get(instanceName).then((config) => {
+      if (cancelled) return;
+      setInstanceParent(
+        config?.wineVersion === CXWINE_VERSION_ID ? "/game-exclusive" : "/",
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [instanceName]);
+
+  if (instanceName) return instanceParent ?? "";
+  if (pathname.startsWith("/game-exclusive")) return "/game-exclusive";
+  if (pathname.startsWith("/downloads")) return "/downloads";
+  if (pathname.startsWith("/settings")) return "/settings";
+  return "/";
+}
+
 function Layout(): React.JSX.Element {
   const [version, setVersion] = useState("");
+  const activeTo = useActiveNav();
 
   useEffect(() => {
     window.easywine.app.version().then(setVersion);
@@ -41,7 +76,7 @@ function Layout(): React.JSX.Element {
               key={item.to}
               to={item.to}
               end={item.end}
-              className="nav-link"
+              className={item.to === activeTo ? "nav-link active" : "nav-link"}
             >
               <Icon name={item.icon} className="text-xl" />
               <span>{item.label}</span>
@@ -49,7 +84,9 @@ function Layout(): React.JSX.Element {
           ))}
         </nav>
         <div className="sidebar__footer">
-          <span className="sidebar__version">{version ? `v${version}` : ""}</span>
+          <span className="sidebar__version">
+            {version ? `v${version}` : ""}
+          </span>
           <button
             type="button"
             className="sidebar__github"

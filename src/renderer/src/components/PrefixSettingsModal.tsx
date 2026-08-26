@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Icon from "./Icon";
 import { CXWINE_VERSION_ID } from "@shared/wine";
-import type { GraphicsBackend, GraphicsInfo } from "@shared/wine";
 import "./CreateConfigModal.scss";
 
 interface PrefixSettingsModalProps {
@@ -23,52 +22,6 @@ function PrefixSettingsModal({
   const [error, setError] = useState<string | null>(null);
 
   const isGame = wineVersion === CXWINE_VERSION_ID;
-
-  const [graphics, setGraphics] = useState<GraphicsInfo | null>(null);
-  const [switching, setSwitching] = useState(false);
-  const [metalHud, setMetalHud] = useState(false);
-
-  useEffect(() => {
-    if (!isGame) return;
-    window.easywine.config.graphicsInfo(name).then(setGraphics);
-    window.easywine.config
-      .get(name)
-      .then((c) => setMetalHud(Boolean(c?.metalHud)));
-  }, [isGame, name]);
-
-  const toggleMetalHud = async (): Promise<void> => {
-    const next = !metalHud;
-    setMetalHud(next);
-    setError(null);
-    try {
-      await window.easywine.config.setMetalHud(name, next);
-    } catch (err) {
-      setMetalHud(!next); // revert on failure
-      setError(
-        err instanceof Error ? err.message : "Could not change the Metal HUD.",
-      );
-    }
-  };
-
-  const changeBackend = async (backend: GraphicsBackend): Promise<void> => {
-    setSwitching(true);
-    setError(null);
-    setNote(`Switching graphics backend to ${backend === "dxvk" ? "DXVK" : "D3DMetal"}…`);
-    try {
-      await window.easywine.config.setGraphics(name, backend);
-      setGraphics((g) => (g ? { ...g, backend } : g));
-      setNote(
-        `Graphics backend set to ${backend === "dxvk" ? "DXVK" : "D3DMetal"}.`,
-      );
-    } catch (err) {
-      setNote(null);
-      setError(
-        err instanceof Error ? err.message : "Could not switch backend.",
-      );
-    } finally {
-      setSwitching(false);
-    }
-  };
 
   const RUNTIME_LABEL: Record<"mono" | "gecko" | "vcrun", string> = {
     mono: "Mono",
@@ -182,66 +135,6 @@ function PrefixSettingsModal({
             Open drive C
           </button>
         </div>
-
-        {isGame && (
-          <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
-            <div>
-              <p className="text-sm font-medium text-wine-light">
-                Graphics backend
-              </p>
-              <p className="text-xs text-neutral-500">
-                D3DMetal translates Direct3D straight to Metal. DXVK routes it
-                through Vulkan (MoltenVK) — only if built into this Wine.
-              </p>
-            </div>
-            <div className="modal__select shrink-0">
-              <select
-                className="modal__input"
-                value={graphics?.backend ?? "d3dmetal"}
-                disabled={!graphics || switching}
-                onChange={(e) =>
-                  changeBackend(e.target.value as GraphicsBackend)
-                }
-              >
-                <option value="d3dmetal">D3DMetal (Metal)</option>
-                <option value="dxvk" disabled={!graphics?.dxvkAvailable}>
-                  DXVK (Vulkan){graphics?.dxvkAvailable ? "" : " — not built"}
-                </option>
-              </select>
-              <Icon name="expand_more" className="modal__chevron text-lg" />
-            </div>
-          </div>
-        )}
-
-        {isGame && (
-          <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
-            <div>
-              <p className="text-sm font-medium text-wine-light">
-                Metal performance HUD
-              </p>
-              <p className="text-xs text-neutral-500">
-                Overlay FPS, frame time and memory (Apple Metal HUD) when a game
-                launches. Applies on the next launch.
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={metalHud}
-              aria-label="Toggle Metal performance HUD"
-              onClick={toggleMetalHud}
-              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                metalHud ? "bg-wine-accent" : "bg-white/15"
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                  metalHud ? "translate-x-5" : "translate-x-0.5"
-                }`}
-              />
-            </button>
-          </div>
-        )}
 
         {isGame && (
           <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">

@@ -1,6 +1,6 @@
 {
   "name": "easywine",
-  "version": "0.9.5",
+  "version": "0.9.11",
   "description": "A GUI for Wine on macOS to easily control and create new Wine configurations and their settings, powered by Electron",
   "homepage": "https://github.com/mhmdrz/easywine#readme",
   "bugs": {
@@ -11,7 +11,7 @@
     "url": "git+https://github.com/mhmdrz/easywine.git"
   },
   "license": "MIT",
-  "author": "Mohammadreza Abdolalipour",
+  "author": "mhmdrz",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {

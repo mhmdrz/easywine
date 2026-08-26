@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type {
   CxwineStatus,
+  GameOptions,
   GraphicsBackend,
   GraphicsInfo,
   InstalledApp,
@@ -100,6 +101,14 @@ export const api = {
       ipcRenderer.invoke("config:delete", name),
     setMetalHud: (name: string, enabled: boolean): Promise<void> =>
       ipcRenderer.invoke("config:set-metal-hud", name, enabled),
+    setOptions: (name: string, patch: GameOptions): Promise<WineConfig> =>
+      ipcRenderer.invoke("config:set-options", name, patch),
+    setDisplay: (
+      name: string,
+      virtualDesktop: boolean,
+      size: string,
+    ): Promise<WineConfig> =>
+      ipcRenderer.invoke("config:set-display", name, virtualDesktop, size),
     installRuntime: (
       name: string,
       kind: "mono" | "gecko" | "vcrun",
