@@ -4,6 +4,26 @@ A customizable GUI for running Windows software and games on macOS with [Wine](h
 
 EasyWine lets you create and manage isolated Wine prefixes ("instances"), install and launch Windows apps, and tweak per‑instance settings — without touching the command line. It also ships a dedicated **Game exclusive** workflow built around a custom [CrossOver](https://www.codeweavers.com/crossover) + Apple **D3DMetal** Wine build, which translates Direct3D to Metal for native‑feeling game performance on Apple hardware.
 
+## Screenshots
+
+### Game exclusive
+
+A dedicated CrossOver + D3DMetal workflow with a live view of the bundled/system libraries your games rely on.
+
+![Game exclusive view](docs/screenshots/game-exclusive.png)
+
+### Per-instance tuning
+
+Manage installed apps and tweak the graphics backend and launch options for each game instance.
+
+![Instance view](docs/screenshots/instance.png)
+
+### Wine downloads
+
+Browse and install any Wine build straight from WineHQ, filtered by major version.
+
+![Downloads view](docs/screenshots/downloads.png)
+
 ## Features
 
 - **Instance manager** — create, configure, and delete independent Wine prefixes (win64 / win32).
