@@ -1,7 +1,7 @@
 import { dialog, shell } from "electron";
 import { spawn } from "child_process";
 import { promises as fsp } from "fs";
-import { basename, dirname, join, resolve, sep } from "path";
+import { basename, dirname, join, relative, resolve, sep } from "path";
 import type {
   GameOptions,
   InstalledApp,
@@ -377,6 +377,112 @@ export async function listApps(name: string): Promise<InstalledApp[]> {
     })),
   );
   return withIcons.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function toWinPath(root: string, unixPath: string): string | null {
+  const rel = relative(root, unixPath);
+  const match = /^drive_([a-z])[/\\](.*)$/i.exec(rel);
+  if (!match) return null;
+  return `${match[1].toUpperCase()}:\\${match[2].replace(/\//g, "\\")}`;
+}
+
+function buildLnk(winTargetPath: string): Buffer {
+  const header = Buffer.alloc(0x4c);
+  header.writeUInt32LE(0x4c, 0x00); // HeaderSize
+  // LinkCLSID: 00021401-0000-0000-C000-000000000046
+  Buffer.from([
+    0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x46,
+  ]).copy(header, 0x04);
+  header.writeUInt32LE(0x00000002, 0x14); // LinkFlags: HasLinkInfo
+  header.writeUInt32LE(0x00000020, 0x18); // FileAttributes: ARCHIVE
+  header.writeUInt32LE(1, 0x3c); // ShowCommand: SW_SHOWNORMAL
+
+  // VolumeID (empty label, DRIVE_FIXED).
+  const volLabel = Buffer.from("\0", "latin1");
+  const volId = Buffer.alloc(0x10 + volLabel.length);
+  volId.writeUInt32LE(volId.length, 0x00);
+  volId.writeUInt32LE(3, 0x04); // DRIVE_FIXED
+  volId.writeUInt32LE(0x10, 0x0c); // VolumeLabelOffset
+  volLabel.copy(volId, 0x10);
+
+  const pathAnsi = Buffer.from(winTargetPath + "\0", "latin1");
+  const suffix = Buffer.from("\0", "latin1"); // empty CommonPathSuffix
+
+  const headerSize = 0x1c;
+  const volumeIdOffset = headerSize;
+  const localBasePathOffset = volumeIdOffset + volId.length;
+  const commonPathSuffixOffset = localBasePathOffset + pathAnsi.length;
+  const linkInfoSize = commonPathSuffixOffset + suffix.length;
+
+  const linkInfo = Buffer.alloc(linkInfoSize);
+  linkInfo.writeUInt32LE(linkInfoSize, 0x00);
+  linkInfo.writeUInt32LE(headerSize, 0x04);
+  linkInfo.writeUInt32LE(0x00000001, 0x08); // VolumeIDAndLocalBasePath
+  linkInfo.writeUInt32LE(volumeIdOffset, 0x0c);
+  linkInfo.writeUInt32LE(localBasePathOffset, 0x10);
+  linkInfo.writeUInt32LE(commonPathSuffixOffset, 0x18);
+  volId.copy(linkInfo, volumeIdOffset);
+  pathAnsi.copy(linkInfo, localBasePathOffset);
+  suffix.copy(linkInfo, commonPathSuffixOffset);
+
+  // ExtraData terminal block.
+  return Buffer.concat([header, linkInfo, Buffer.alloc(4)]);
+}
+
+export async function addApp(name: string): Promise<InstalledApp | null> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+
+  const root = prefixDir(name);
+  const result = await dialog.showOpenDialog({
+    title: "Select an application to add",
+    defaultPath: join(root, "drive_c"),
+    properties: ["openFile"],
+    filters: [{ name: "Windows programs", extensions: ["exe"] }],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+
+  // Canonicalize both sides: userData resolves to a differently-cased on-disk
+  // path (and may cross symlinks), so compare/derive from realpaths.
+  const realRoot = await fsp.realpath(root);
+  const target = await fsp.realpath(result.filePaths[0]).catch(() => "");
+  const winPath = target ? toWinPath(realRoot, target) : null;
+  if (!winPath) {
+    throw new Error("Choose an application inside this instance’s folder.");
+  }
+
+  const appName = basename(target).replace(/\.exe$/i, "");
+  const programs = join(
+    root,
+    "drive_c",
+    "ProgramData",
+    "Microsoft",
+    "Windows",
+    "Start Menu",
+    "Programs",
+  );
+  await fsp.mkdir(programs, { recursive: true });
+
+  // Pick a shortcut filename that doesn't clobber an existing one.
+  let lnkPath = join(programs, `${appName}.lnk`);
+  for (let i = 2; ; i++) {
+    const taken = await fsp
+      .stat(lnkPath)
+      .then(() => true)
+      .catch(() => false);
+    if (!taken) break;
+    lnkPath = join(programs, `${appName} (${i}).lnk`);
+  }
+
+  await fsp.writeFile(lnkPath, buildLnk(winPath));
+
+  const icon = await resolveIcon(name, lnkPath);
+  return {
+    name: basename(lnkPath).replace(/\.lnk$/i, ""),
+    path: lnkPath,
+    icon,
+  };
 }
 
 export async function runApp(name: string, appPath: string): Promise<void> {

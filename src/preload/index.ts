@@ -84,6 +84,8 @@ export const api = {
       ipcRenderer.invoke("config:open-drive-c", name),
     install: (name: string): Promise<string | null> =>
       ipcRenderer.invoke("config:install", name),
+    addApp: (name: string): Promise<InstalledApp | null> =>
+      ipcRenderer.invoke("config:add-app", name),
     run: (name: string, appPath: string): Promise<void> =>
       ipcRenderer.invoke("config:run", name, appPath),
     uninstall: (

@@ -10,6 +10,7 @@ import {
   listInstalled,
 } from "./wineManager";
 import {
+  addApp,
   createConfig,
   deleteConfig,
   getConfig,
@@ -61,6 +62,7 @@ export function registerIpc(): void {
     openDriveC(name),
   );
   ipcMain.handle("config:install", (_event, name: string) => installApp(name));
+  ipcMain.handle("config:add-app", (_event, name: string) => addApp(name));
   ipcMain.handle("config:run", (_event, name: string, appPath: string) =>
     runApp(name, appPath),
   );

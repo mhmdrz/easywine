@@ -26,6 +26,7 @@ function Instance(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -94,6 +95,22 @@ function Instance(): React.JSX.Element {
     } catch (err) {
       setNote(err instanceof Error ? err.message : "Could not delete instance.");
       setDeleting(false);
+    }
+  };
+
+  const handleAdd = async (): Promise<void> => {
+    setAdding(true);
+    setNote(null);
+    try {
+      const added = await window.easywine.config.addApp(name);
+      if (added) {
+        setNote(`Added “${added.name}”.`);
+        loadApps();
+      }
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Could not add the app.");
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -184,6 +201,19 @@ function Instance(): React.JSX.Element {
                 Installed applications
               </h2>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Add an existing app"
+                  aria-label="Add an existing app"
+                  onClick={handleAdd}
+                  disabled={adding}
+                >
+                  <Icon
+                    name={adding ? "progress_activity" : "add"}
+                    className={adding ? "animate-spin text-lg" : "text-lg"}
+                  />
+                </button>
                 <button
                   type="button"
                   className="icon-btn"
