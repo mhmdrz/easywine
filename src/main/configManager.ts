@@ -387,6 +387,12 @@ function toWinPath(root: string, unixPath: string): string | null {
 }
 
 function buildLnk(winTargetPath: string): Buffer {
+  // Working directory = the target's folder. Many apps (notably Unity games)
+  // resolve their data relative to the current directory and won't start unless
+  // it's set, so a shortcut without it launches into a broken cwd.
+  const workingDir =
+    winTargetPath.replace(/\\[^\\]*$/, "") || winTargetPath;
+
   const header = Buffer.alloc(0x4c);
   header.writeUInt32LE(0x4c, 0x00); // HeaderSize
   // LinkCLSID: 00021401-0000-0000-C000-000000000046
@@ -394,7 +400,7 @@ function buildLnk(winTargetPath: string): Buffer {
     0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x46,
   ]).copy(header, 0x04);
-  header.writeUInt32LE(0x00000002, 0x14); // LinkFlags: HasLinkInfo
+  header.writeUInt32LE(0x00000012, 0x14); // LinkFlags: HasLinkInfo | HasWorkingDir
   header.writeUInt32LE(0x00000020, 0x18); // FileAttributes: ARCHIVE
   header.writeUInt32LE(1, 0x3c); // ShowCommand: SW_SHOWNORMAL
 
@@ -426,8 +432,15 @@ function buildLnk(winTargetPath: string): Buffer {
   pathAnsi.copy(linkInfo, localBasePathOffset);
   suffix.copy(linkInfo, commonPathSuffixOffset);
 
+  // STRING_DATA: WORKING_DIR (ANSI, since IsUnicode is not set). A 2-byte
+  // character count followed by the string, with no null terminator.
+  const wdBytes = Buffer.from(workingDir, "latin1");
+  const workingDirBlock = Buffer.alloc(2 + wdBytes.length);
+  workingDirBlock.writeUInt16LE(wdBytes.length, 0);
+  wdBytes.copy(workingDirBlock, 2);
+
   // ExtraData terminal block.
-  return Buffer.concat([header, linkInfo, Buffer.alloc(4)]);
+  return Buffer.concat([header, linkInfo, workingDirBlock, Buffer.alloc(4)]);
 }
 
 export async function addApp(name: string): Promise<InstalledApp | null> {
