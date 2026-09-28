@@ -31,6 +31,7 @@ import {
   importCxwineSource,
   openCxwineCompiler,
 } from "./cxwine";
+import { checkLatestDxvk, downloadDxvk, getDxvkStatus } from "./dxvk";
 import { installRuntime, type RuntimeKind } from "./prefixRuntime";
 import { getLibTips } from "./libTips";
 import { checkForUpdates } from "./updates";
@@ -99,6 +100,14 @@ export function registerIpc(): void {
     "config:set-graphics",
     (_event, name: string, backend: GraphicsBackend) =>
       setGraphicsBackend(name, backend),
+  );
+
+  ipcMain.handle("dxvk:status", () => getDxvkStatus());
+  ipcMain.handle("dxvk:check", () => checkLatestDxvk());
+  ipcMain.handle("dxvk:download", (event) =>
+    downloadDxvk((stage, progress) => {
+      event.sender.send("dxvk:progress", { stage, progress });
+    }),
   );
 
   ipcMain.handle("cxwine:status", () => getCxwineStatus());
