@@ -41,7 +41,7 @@ Browse and install any Wine build straight from WineHQ, filtered by major versio
 
 - **macOS Tahoe 26.5.2** on an **M1 Pro MacBook Pro**. The main app runs natively on `arm64`.
 - The **Game exclusive** CrossOver + D3DMetal build is `x86_64` and runs via **Rosetta 2**, so an Apple Silicon Mac with Rosetta installed is recommended for that workflow.
-- Verified in‑game with **Stronghold Crusader: Definitive Edition**.
+- Verified in‑game with **Stronghold Crusader: Definitive Edition**. See the full [tested games log](./docs/TESTED.md).
 - **Electron 43** / Node 22.
 
 ## Installing a release
@@ -83,6 +83,7 @@ EasyWine stands on the shoulders of a lot of great open‑source and third‑par
 - **Apple D3DMetal** — Apple's Direct3D‑to‑Metal translation layer, part of the [Game Porting Toolkit](https://developer.apple.com/games/game-porting-toolkit/).
 - **[MoltenVK](https://github.com/KhronosGroup/MoltenVK)** — Vulkan‑over‑Metal used by the DXVK backend.
 - **[DXVK](https://github.com/doitsujin/dxvk)** — Direct3D‑to‑Vulkan translation, offered as an alternative graphics backend.
+- **[DXVK‑macOS](https://github.com/Gcenx/DXVK-macOS)** by [Gcenx](https://github.com/Gcenx) — the macOS/MoltenVK‑patched DXVK builds that EasyWine downloads for the DXVK backend. Licensed under zlib/libpng, same as upstream DXVK.
 - **[Wine Mono](https://gitlab.winehq.org/wine/wine-mono)** and **[Wine Gecko](https://gitlab.winehq.org/wine/wine-gecko)** — .NET and HTML runtimes for prefixes.
 - Bundled native libraries via **[Homebrew](https://brew.sh/)**: **FreeType**, **GnuTLS**, and their dependency closure (GMP, Nettle, libtasn1, p11‑kit, libidn2, gettext, and friends).
 

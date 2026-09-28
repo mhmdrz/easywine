@@ -55,6 +55,11 @@ export interface GraphicsInfo {
   dxvkAvailable: boolean;
 }
 
+export interface DxvkStatus {
+  installed: string | null;
+  hasDlls: boolean;
+}
+
 export interface InstalledApp {
   name: string;
   path: string;

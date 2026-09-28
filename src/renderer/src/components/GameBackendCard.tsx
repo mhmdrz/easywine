@@ -297,12 +297,43 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
             checked={opts.metalHud}
             onChange={(v) => patchOption("metalHud", v)}
           />
-          <ToggleRow
-            label="MetalFX upscaling"
-            hint="Let D3DMetal upscale frames with MetalFX. On by default."
-            checked={opts.metalFx}
-            onChange={(v) => patchOption("metalFx", v)}
-          />
+
+          {isDxvk ? (
+            <ToggleRow
+              label="DXVK HUD"
+              hint="On-screen DXVK stats (FPS, frame times, GPU load)."
+              checked={opts.dxvkHud}
+              onChange={(v) => patchOption("dxvkHud", v)}
+            />
+          ) : (
+            <>
+              <ToggleRow
+                label="MetalFX upscaling"
+                hint="Let D3DMetal upscale frames with MetalFX. On by default."
+                checked={opts.metalFx}
+                onChange={(v) => patchOption("metalFx", v)}
+              />
+              <ToggleRow
+                label="D3DMetal HUD stats"
+                hint="D3DMetal's own on-screen stats overlay (D3DM_SHOW_HUD_STATS)."
+                checked={opts.d3dmHudStats}
+                onChange={(v) => patchOption("d3dmHudStats", v)}
+              />
+              <ToggleRow
+                label="Ray tracing (DXR)"
+                hint="Enable DirectX Raytracing support in D3DMetal (D3DM_SUPPORT_DXR)."
+                checked={opts.d3dmDxr}
+                onChange={(v) => patchOption("d3dmDxr", v)}
+              />
+              <ToggleRow
+                label="Metal 4 API"
+                hint="Use the newer Metal 4 path in D3DMetal (D3DM_MTL4). Experimental."
+                checked={opts.d3dmMtl4}
+                onChange={(v) => patchOption("d3dmMtl4", v)}
+              />
+            </>
+          )}
+
           <ToggleRow
             label="Advertise AVX (Rosetta)"
             hint="Expose AVX under Rosetta 2 — some games require it."
@@ -316,35 +347,10 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
             onChange={(v) => patchOption("esync", v)}
           />
           <ToggleRow
-            label="DXVK HUD"
-            hint="On-screen DXVK stats (FPS, frame times, GPU load)."
-            checked={opts.dxvkHud}
-            disabled={!isDxvk}
-            onChange={(v) => patchOption("dxvkHud", v)}
-          />
-          <ToggleRow
             label="Debug logging"
             hint="Wine warnings/fixmes to the log. Slower — for troubleshooting."
             checked={opts.debugLogging}
             onChange={(v) => patchOption("debugLogging", v)}
-          />
-          <ToggleRow
-            label="D3DMetal HUD stats"
-            hint="D3DMetal's own on-screen stats overlay (D3DM_SHOW_HUD_STATS)."
-            checked={opts.d3dmHudStats}
-            onChange={(v) => patchOption("d3dmHudStats", v)}
-          />
-          <ToggleRow
-            label="Ray tracing (DXR)"
-            hint="Enable DirectX Raytracing support in D3DMetal (D3DM_SUPPORT_DXR)."
-            checked={opts.d3dmDxr}
-            onChange={(v) => patchOption("d3dmDxr", v)}
-          />
-          <ToggleRow
-            label="Metal 4 API"
-            hint="Use the newer Metal 4 path in D3DMetal (D3DM_MTL4). Experimental."
-            checked={opts.d3dmMtl4}
-            onChange={(v) => patchOption("d3dmMtl4", v)}
           />
         </div>
       </div>

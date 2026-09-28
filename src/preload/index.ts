@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type {
   CxwineStatus,
+  DxvkStatus,
   GameOptions,
   GraphicsBackend,
   GraphicsInfo,
@@ -32,6 +33,27 @@ export const api = {
     /** Check GitHub releases for a newer version (shows a native dialog). */
     checkForUpdates: (): Promise<void> =>
       ipcRenderer.invoke("app:check-updates"),
+  },
+  dxvk: {
+    /** Installed DXVK build info (no network). */
+    status: (): Promise<DxvkStatus> => ipcRenderer.invoke("dxvk:status"),
+    /** Latest DXVK-macOS release tag available on GitHub. */
+    check: (): Promise<string> => ipcRenderer.invoke("dxvk:check"),
+    /** Download + stage the latest DXVK build; resolves to the installed tag. */
+    download: (): Promise<string> => ipcRenderer.invoke("dxvk:download"),
+    /** Subscribe to download progress; returns an unsubscribe function. */
+    onProgress: (
+      callback: (data: { stage: string; progress: number }) => void,
+    ): (() => void) => {
+      const handler = (
+        _event: IpcRendererEvent,
+        data: { stage: string; progress: number },
+      ): void => callback(data);
+      ipcRenderer.on("dxvk:progress", handler);
+      return () => {
+        ipcRenderer.removeListener("dxvk:progress", handler);
+      };
+    },
   },
   cxwine: {
     /** State of the custom CrossOver + D3DMetal Wine build. */

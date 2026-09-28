@@ -26,19 +26,27 @@ function system32Dir(name: string): string {
   return join(prefixDir(name), "drive_c", "windows", "system32");
 }
 
-function dxvkStageDir(): string {
-  return join(cxwineBuildDir(), "share", "dxvk", "x64");
+function syswow64Dir(name: string): string {
+  return join(prefixDir(name), "drive_c", "windows", "syswow64");
 }
 
-async function listDxvkDlls(): Promise<string[]> {
-  const entries = await fsp.readdir(dxvkStageDir()).catch(() => [] as string[]);
+function dxvkStageDir(sub: "x64" | "x32"): string {
+  return join(cxwineBuildDir(), "share", "dxvk", sub);
+}
+
+async function listDxvkDlls(sub: "x64" | "x32"): Promise<string[]> {
+  const entries = await fsp
+    .readdir(dxvkStageDir(sub))
+    .catch(() => [] as string[]);
   return entries.filter((f) => f.toLowerCase().endsWith(".dll"));
 }
 
 export async function getGraphicsInfo(name: string): Promise<GraphicsInfo> {
   const config = await getConfig(name);
   const backend = config?.graphicsBackend ?? "d3dmetal";
-  const dxvkAvailable = (await listDxvkDlls()).length > 0;
+  const dxvkAvailable =
+    (await listDxvkDlls("x64")).length > 0 ||
+    (await listDxvkDlls("x32")).length > 0;
   return { backend, dxvkAvailable };
 }
 
@@ -110,21 +118,40 @@ export async function setGraphicsBackend(
   const prefix = prefixDir(name);
 
   if (backend === "dxvk") {
-    const dlls = await listDxvkDlls();
-    if (dlls.length === 0) {
+    const targets: Array<{ dir: string; sub: "x64" | "x32" }> =
+      config.arch === "win64"
+        ? [
+            { dir: system32Dir(name), sub: "x64" },
+            { dir: syswow64Dir(name), sub: "x32" },
+          ]
+        : [{ dir: system32Dir(name), sub: "x32" }];
+
+    const overridden = new Set<string>();
+    for (const target of targets) {
+      const dlls = await listDxvkDlls(target.sub);
+      if (dlls.length === 0) continue;
+      const dirExists = await fsp
+        .stat(target.dir)
+        .then((s) => s.isDirectory())
+        .catch(() => false);
+      // system32 always exists; syswow64 may be absent — skip it if so.
+      if (!dirExists) {
+        if (target.dir !== system32Dir(name)) continue;
+        await fsp.mkdir(target.dir, { recursive: true });
+      }
+      for (const dll of dlls) {
+        await fsp.copyFile(
+          join(dxvkStageDir(target.sub), dll),
+          join(target.dir, dll),
+        );
+        overridden.add(dll.replace(/\.dll$/i, ""));
+      }
+    }
+    if (overridden.size === 0) {
       throw new Error("DXVK was not built into this Wine — rebuild it first.");
     }
-    const sys32 = system32Dir(name);
-    await fsp.mkdir(sys32, { recursive: true });
-    for (const dll of dlls) {
-      await fsp.copyFile(join(dxvkStageDir(), dll), join(sys32, dll));
-      await setOverride(
-        wine,
-        prefix,
-        config.arch,
-        dll.replace(/\.dll$/i, ""),
-        "native",
-      );
+    for (const dll of overridden) {
+      await setOverride(wine, prefix, config.arch, dll, "native");
     }
   } else {
     // D3DMetal: use the builtin D3D DLLs (which are D3DMetal in this build) and
