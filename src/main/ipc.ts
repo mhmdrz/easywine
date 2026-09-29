@@ -14,6 +14,7 @@ import {
   createConfig,
   deleteConfig,
   getConfig,
+  getLaunchOptions,
   installApp,
   listApps,
   listConfigs,
@@ -22,7 +23,9 @@ import {
   runWinecfg,
   setDisplayMode,
   setGameOptions,
+  setLaunchOptions,
   setMetalHud,
+  setUiScale,
   uninstallApp,
 } from "./configManager";
 import {
@@ -67,6 +70,16 @@ export function registerIpc(): void {
   ipcMain.handle("config:run", (_event, name: string, appPath: string) =>
     runApp(name, appPath),
   );
+  ipcMain.handle(
+    "config:get-launch-options",
+    (_event, name: string, appPath: string) =>
+      getLaunchOptions(name, appPath),
+  );
+  ipcMain.handle(
+    "config:set-launch-options",
+    (_event, name: string, appPath: string, options: string) =>
+      setLaunchOptions(name, appPath, options),
+  );
   ipcMain.handle("config:uninstall", (_event, name: string, appPath: string) =>
     uninstallApp(name, appPath),
   );
@@ -88,6 +101,9 @@ export function registerIpc(): void {
     "config:set-display",
     (_event, name: string, virtualDesktop: boolean, size: string) =>
       setDisplayMode(name, virtualDesktop, size),
+  );
+  ipcMain.handle("config:set-dpi", (_event, name: string, dpi: number) =>
+    setUiScale(name, dpi),
   );
   ipcMain.handle(
     "config:install-runtime",

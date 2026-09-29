@@ -110,6 +110,14 @@ export const api = {
       ipcRenderer.invoke("config:add-app", name),
     run: (name: string, appPath: string): Promise<void> =>
       ipcRenderer.invoke("config:run", name, appPath),
+    getLaunchOptions: (name: string, appPath: string): Promise<string> =>
+      ipcRenderer.invoke("config:get-launch-options", name, appPath),
+    setLaunchOptions: (
+      name: string,
+      appPath: string,
+      options: string,
+    ): Promise<void> =>
+      ipcRenderer.invoke("config:set-launch-options", name, appPath, options),
     uninstall: (
       name: string,
       appPath: string,
@@ -133,6 +141,8 @@ export const api = {
       size: string,
     ): Promise<WineConfig> =>
       ipcRenderer.invoke("config:set-display", name, virtualDesktop, size),
+    setDpi: (name: string, dpi: number): Promise<WineConfig> =>
+      ipcRenderer.invoke("config:set-dpi", name, dpi),
     installRuntime: (
       name: string,
       kind: "mono" | "gecko" | "vcrun",

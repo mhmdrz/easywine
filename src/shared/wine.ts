@@ -35,6 +35,8 @@ export interface WineConfig {
   d3dmMtl4?: boolean;
   virtualDesktop?: boolean;
   desktopSize?: string;
+  dpi?: number;
+  launchOptions?: Record<string, string>;
 }
 
 export interface GameOptions {

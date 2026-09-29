@@ -47,7 +47,7 @@ const SPECS: Spec[] = [
   {
     name: "FreeType + GnuTLS",
     purpose:
-      "Font rendering & HTTPS/TLS — bundled into the build, self-contained",
+      "Font rendering & HTTPS/TLS - bundled into the build, self-contained",
     source: "bundled",
   },
   {

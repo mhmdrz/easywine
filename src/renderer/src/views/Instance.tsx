@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Icon from "../components/Icon";
 import GameBackendCard from "../components/GameBackendCard";
 import PrefixSettingsModal from "../components/PrefixSettingsModal";
+import LaunchOptionsModal from "../components/LaunchOptionsModal";
 import { formatVersionId } from "../utils/format";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import type { InstalledApp, WineConfig } from "@shared/wine";
@@ -25,6 +26,7 @@ function Instance(): React.JSX.Element {
   const [apps, setApps] = useState<InstalledApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [optionsFor, setOptionsFor] = useState<InstalledApp | null>(null);
   const [installing, setInstalling] = useState(false);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -269,6 +271,15 @@ function Instance(): React.JSX.Element {
                     </button>
                     <button
                       type="button"
+                      className="icon-btn shrink-0 text-neutral-400 hover:text-wine-light"
+                      title={`Launch options for ${app.name}`}
+                      aria-label={`Launch options for ${app.name}`}
+                      onClick={() => setOptionsFor(app)}
+                    >
+                      <Icon name="tune" className="text-lg" />
+                    </button>
+                    <button
+                      type="button"
                       className="icon-btn shrink-0 text-neutral-400 hover:text-red-400"
                       title={`Delete ${app.name}`}
                       aria-label={`Delete ${app.name}`}
@@ -301,6 +312,14 @@ function Instance(): React.JSX.Element {
           name={config.name}
           wineVersion={config.wineVersion}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {optionsFor && (
+        <LaunchOptionsModal
+          instance={name}
+          app={optionsFor}
+          onClose={() => setOptionsFor(null)}
         />
       )}
     </section>

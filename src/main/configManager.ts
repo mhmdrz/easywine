@@ -146,6 +146,14 @@ const GAMING_DLLS = [
   "d3dcompiler_47",
 ];
 
+// Windows DPI: 96 = 100%. Retina game prefixes default to 200%.
+const DEFAULT_GAME_DPI = 192;
+const DPI_VALUES = [96, 120, 144, 192];
+const DPI_KEYS = [
+  "HKEY_CURRENT_USER\\Control Panel\\Desktop",
+  "HKEY_CURRENT_USER\\Software\\Wine\\Fonts",
+];
+
 async function applyGameDefaults(
   wineVersion: string,
   prefix: string,
@@ -165,25 +173,50 @@ async function applyGameDefaults(
     ]),
   ];
 
-  for (const [key, name, data] of settings) {
-    await new Promise<void>((resolve) => {
-      const child = spawn(
-        wine,
-        ["reg", "add", key, "/v", name, "/t", "REG_SZ", "/d", data, "/f"],
-        {
-          env: {
-            ...process.env,
-            ...extraEnv,
-            WINEPREFIX: prefix,
-            WINEARCH: arch,
-            WINEDEBUG: "-all",
-          },
-          stdio: "ignore",
+  const runReg = (args: string[]): Promise<void> =>
+    new Promise((resolve) => {
+      const child = spawn(wine, args, {
+        env: {
+          ...process.env,
+          ...extraEnv,
+          WINEPREFIX: prefix,
+          WINEARCH: arch,
+          WINEDEBUG: "-all",
         },
-      );
+        stdio: "ignore",
+      });
       child.on("error", () => resolve());
       child.on("close", () => resolve());
     });
+
+  for (const [key, name, data] of settings) {
+    await runReg([
+      "reg",
+      "add",
+      key,
+      "/v",
+      name,
+      "/t",
+      "REG_SZ",
+      "/d",
+      data,
+      "/f",
+    ]);
+  }
+
+  for (const key of DPI_KEYS) {
+    await runReg([
+      "reg",
+      "add",
+      key,
+      "/v",
+      "LogPixels",
+      "/t",
+      "REG_DWORD",
+      "/d",
+      String(DEFAULT_GAME_DPI),
+      "/f",
+    ]);
   }
 }
 
@@ -265,7 +298,9 @@ export async function createConfig(
     wineVersion,
     arch,
     createdAt: new Date().toISOString(),
-    ...(isGame ? { graphicsBackend: "d3dmetal" as const } : {}),
+    ...(isGame
+      ? { graphicsBackend: "d3dmetal" as const, dpi: DEFAULT_GAME_DPI }
+      : {}),
   };
   await fsp.writeFile(configFile(trimmed), JSON.stringify(config, null, 2));
   return config;
@@ -390,8 +425,7 @@ function buildLnk(winTargetPath: string): Buffer {
   // Working directory = the target's folder. Many apps (notably Unity games)
   // resolve their data relative to the current directory and won't start unless
   // it's set, so a shortcut without it launches into a broken cwd.
-  const workingDir =
-    winTargetPath.replace(/\\[^\\]*$/, "") || winTargetPath;
+  const workingDir = winTargetPath.replace(/\\[^\\]*$/, "") || winTargetPath;
 
   const header = Buffer.alloc(0x4c);
   header.writeUInt32LE(0x4c, 0x00); // HeaderSize
@@ -498,6 +532,35 @@ export async function addApp(name: string): Promise<InstalledApp | null> {
   };
 }
 
+function shortcutKey(name: string, appPath: string): string {
+  return relative(prefixDir(name), resolve(appPath)).split(sep).join("/");
+}
+
+export async function getLaunchOptions(
+  name: string,
+  appPath: string,
+): Promise<string> {
+  const config = await getConfig(name);
+  if (!config) return "";
+  return config.launchOptions?.[shortcutKey(name, appPath)] ?? "";
+}
+
+export async function setLaunchOptions(
+  name: string,
+  appPath: string,
+  options: string,
+): Promise<void> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+  const key = shortcutKey(name, appPath);
+  const map = { ...(config.launchOptions ?? {}) };
+  const trimmed = options.trim();
+  if (trimmed) map[key] = trimmed;
+  else delete map[key];
+  const updated: WineConfig = { ...config, launchOptions: map };
+  await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
+}
+
 export async function runApp(name: string, appPath: string): Promise<void> {
   const config = await getConfig(name);
   if (!config) throw new Error(`Unknown instance: ${name}`);
@@ -533,7 +596,10 @@ export async function runApp(name: string, appPath: string): Promise<void> {
   }
   if (config.metalHud) env.MTL_HUD_ENABLED = "1";
 
-  const child = spawn(wine, ["start", "/unix", target], {
+  const options = config.launchOptions?.[shortcutKey(name, appPath)];
+  const extraArgs = options ? splitCommandLine(options) : [];
+
+  const child = spawn(wine, ["start", "/unix", target, ...extraArgs], {
     env,
     detached: true,
     stdio: "ignore",
@@ -643,6 +709,41 @@ export async function setDisplayMode(
   }
 
   const updated: WineConfig = { ...config, virtualDesktop, desktopSize: size };
+  await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
+  return updated;
+}
+
+export async function setUiScale(
+  name: string,
+  dpi: number,
+): Promise<WineConfig> {
+  const config = await getConfig(name);
+  if (!config) throw new Error(`Unknown instance: ${name}`);
+  if (!DPI_VALUES.includes(dpi)) {
+    throw new Error(`Unsupported UI scale (DPI ${dpi}).`);
+  }
+
+  const wine = await resolveWineTool(config.wineVersion, "wine");
+  if (!wine) throw new Error("wine is not available for this Wine version.");
+  const prefix = prefixDir(name);
+  await ensurePrefixTemp(prefix);
+
+  for (const key of DPI_KEYS) {
+    await regCommand(config.wineVersion, prefix, config.arch, wine, [
+      "reg",
+      "add",
+      key,
+      "/v",
+      "LogPixels",
+      "/t",
+      "REG_DWORD",
+      "/d",
+      String(dpi),
+      "/f",
+    ]);
+  }
+
+  const updated: WineConfig = { ...config, dpi };
   await fsp.writeFile(configFile(name), JSON.stringify(updated, null, 2));
   return updated;
 }

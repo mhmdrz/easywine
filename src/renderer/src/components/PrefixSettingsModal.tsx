@@ -118,7 +118,10 @@ function PrefixSettingsModal({
             onClick={runWinecfg}
             disabled={launching}
           >
-            <Icon name="tune" className="text-lg" />
+            <Icon
+              name={launching ? "progress_activity" : "tune"}
+              className={`text-lg ${launching ? "animate-spin" : ""}`}
+            />
             {launching ? "Launching…" : "Run winecfg"}
           </button>
         </div>
