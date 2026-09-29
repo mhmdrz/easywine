@@ -15,11 +15,23 @@ const RESOLUTIONS = [
 
 const FRAME_CAPS = [0, 30, 60, 90, 120, 144, 165, 240];
 
+function SelectChevron({ busy }: { busy?: boolean }): React.JSX.Element {
+  if (busy) {
+    return (
+      <span className="modal__chevron">
+        <Icon name="progress_activity" className="block animate-spin text-lg" />
+      </span>
+    );
+  }
+  return <Icon name="expand_more" className="modal__chevron text-lg" />;
+}
+
 interface ToggleRowProps {
   label: string;
   hint: string;
   checked: boolean;
   disabled?: boolean;
+  busy?: boolean;
   onChange: (next: boolean) => void;
 }
 
@@ -28,6 +40,7 @@ function ToggleRow({
   hint,
   checked,
   disabled,
+  busy,
   onChange,
 }: ToggleRowProps): React.JSX.Element {
   return (
@@ -36,23 +49,31 @@ function ToggleRow({
         <p className="text-sm font-medium text-wine-light">{label}</p>
         <p className="text-xs text-neutral-500">{hint}</p>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-          checked ? "bg-wine-accent" : "bg-white/15"
-        } ${disabled ? "opacity-40" : ""}`}
-      >
-        <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0.5"
-          }`}
-        />
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {busy && (
+          <Icon
+            name="progress_activity"
+            className="animate-spin text-base text-neutral-400"
+          />
+        )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-label={label}
+          disabled={disabled || busy}
+          onClick={() => onChange(!checked)}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+            checked ? "bg-wine-accent" : "bg-white/15"
+          } ${disabled || busy ? "opacity-40" : ""}`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+              checked ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -98,6 +119,11 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
   const [virtualDesktop, setVirtualDesktop] = useState(false);
   const [desktopSize, setDesktopSize] = useState("1920x1080");
   const [applyingDisplay, setApplyingDisplay] = useState(false);
+  const [uiScale, setUiScale] = useState(192);
+  const [applyingScale, setApplyingScale] = useState(false);
+  const [savingKeys, setSavingKeys] = useState<
+    Partial<Record<keyof GameOptions, boolean>>
+  >({});
 
   const isDxvk = graphics?.backend === "dxvk";
 
@@ -119,6 +145,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
       });
       setVirtualDesktop(Boolean(c.virtualDesktop));
       if (c.desktopSize) setDesktopSize(c.desktopSize);
+      if (c.dpi) setUiScale(c.dpi);
     });
   }, [name]);
 
@@ -151,6 +178,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
     const prev = opts;
     setOpts((o) => ({ ...o, [key]: value }));
     setError(null);
+    setSavingKeys((s) => ({ ...s, [key]: true }));
     try {
       await window.easywine.config.setOptions(name, { [key]: value });
     } catch (err) {
@@ -158,6 +186,8 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
       setError(
         err instanceof Error ? err.message : "Could not save the setting.",
       );
+    } finally {
+      setSavingKeys((s) => ({ ...s, [key]: false }));
     }
   };
 
@@ -191,6 +221,28 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
     }
   };
 
+  const applyScale = async (dpi: number): Promise<void> => {
+    const prev = uiScale;
+    setUiScale(dpi);
+    setApplyingScale(true);
+    setError(null);
+    setNote("Applying UI scale…");
+    try {
+      await window.easywine.config.setDpi(name, dpi);
+      setNote(
+        `UI scale set to ${Math.round((dpi / 96) * 100)}% — applies on the next launch.`,
+      );
+    } catch (err) {
+      setUiScale(prev);
+      setNote(null);
+      setError(
+        err instanceof Error ? err.message : "Could not change UI scale.",
+      );
+    } finally {
+      setApplyingScale(false);
+    }
+  };
+
   return (
     <div className="card mt-6">
       <h2 className="text-lg font-semibold text-wine-light">
@@ -204,7 +256,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
         <div className="space-y-5">
           <Field
             label="Graphics backend"
-            hint="D3DMetal → Metal directly. DXVK routes through Vulkan (MoltenVK)."
+            hint="D3DMetal to Metal directly. DXVK routes through Vulkan (MoltenVK)."
           >
             <div className="modal__select">
               <select
@@ -220,7 +272,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
                   DXVK (Vulkan){graphics?.dxvkAvailable ? "" : " — not built"}
                 </option>
               </select>
-              <Icon name="expand_more" className="modal__chevron text-lg" />
+              <SelectChevron busy={switching} />
             </div>
           </Field>
 
@@ -240,7 +292,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
                 <option value="native">Native (game decides)</option>
                 <option value="desktop">Virtual desktop (windowed)</option>
               </select>
-              <Icon name="expand_more" className="modal__chevron text-lg" />
+              <SelectChevron busy={applyingDisplay} />
             </div>
           </Field>
 
@@ -262,7 +314,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
                     </option>
                   ))}
                 </select>
-                <Icon name="expand_more" className="modal__chevron text-lg" />
+                <SelectChevron busy={applyingDisplay} />
               </div>
             </Field>
           )}
@@ -275,6 +327,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
               <select
                 className="modal__input"
                 value={opts.frameRateCap}
+                disabled={Boolean(savingKeys.frameRateCap)}
                 onChange={(e) =>
                   patchOption("frameRateCap", Number(e.target.value))
                 }
@@ -285,7 +338,27 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
                   </option>
                 ))}
               </select>
-              <Icon name="expand_more" className="modal__chevron text-lg" />
+              <SelectChevron busy={Boolean(savingKeys.frameRateCap)} />
+            </div>
+          </Field>
+
+          <Field
+            label="UI scale (DPI)"
+            hint="Retina renders at native density — raise DPI so apps and winecfg aren't tiny. 200% suits most Retina displays."
+          >
+            <div className="modal__select">
+              <select
+                className="modal__input"
+                value={uiScale}
+                disabled={applyingScale}
+                onChange={(e) => applyScale(Number(e.target.value))}
+              >
+                <option value={96}>100% (96 dpi)</option>
+                <option value={120}>125% (120 dpi)</option>
+                <option value={144}>150% (144 dpi)</option>
+                <option value={192}>200% (192 dpi)</option>
+              </select>
+              <SelectChevron busy={applyingScale} />
             </div>
           </Field>
         </div>
@@ -295,6 +368,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
             label="Metal performance HUD"
             hint="Overlay FPS, frame time and memory (Apple Metal HUD)."
             checked={opts.metalHud}
+            busy={savingKeys.metalHud}
             onChange={(v) => patchOption("metalHud", v)}
           />
 
@@ -303,6 +377,7 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
               label="DXVK HUD"
               hint="On-screen DXVK stats (FPS, frame times, GPU load)."
               checked={opts.dxvkHud}
+              busy={savingKeys.dxvkHud}
               onChange={(v) => patchOption("dxvkHud", v)}
             />
           ) : (
@@ -311,24 +386,28 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
                 label="MetalFX upscaling"
                 hint="Let D3DMetal upscale frames with MetalFX. On by default."
                 checked={opts.metalFx}
+                busy={savingKeys.metalFx}
                 onChange={(v) => patchOption("metalFx", v)}
               />
               <ToggleRow
                 label="D3DMetal HUD stats"
                 hint="D3DMetal's own on-screen stats overlay (D3DM_SHOW_HUD_STATS)."
                 checked={opts.d3dmHudStats}
+                busy={savingKeys.d3dmHudStats}
                 onChange={(v) => patchOption("d3dmHudStats", v)}
               />
               <ToggleRow
                 label="Ray tracing (DXR)"
                 hint="Enable DirectX Raytracing support in D3DMetal (D3DM_SUPPORT_DXR)."
                 checked={opts.d3dmDxr}
+                busy={savingKeys.d3dmDxr}
                 onChange={(v) => patchOption("d3dmDxr", v)}
               />
               <ToggleRow
                 label="Metal 4 API"
                 hint="Use the newer Metal 4 path in D3DMetal (D3DM_MTL4). Experimental."
                 checked={opts.d3dmMtl4}
+                busy={savingKeys.d3dmMtl4}
                 onChange={(v) => patchOption("d3dmMtl4", v)}
               />
             </>
@@ -338,18 +417,21 @@ function GameBackendCard({ name }: GameBackendCardProps): React.JSX.Element {
             label="Advertise AVX (Rosetta)"
             hint="Expose AVX under Rosetta 2 — some games require it."
             checked={opts.rosettaAvx}
+            busy={savingKeys.rosettaAvx}
             onChange={(v) => patchOption("rosettaAvx", v)}
           />
           <ToggleRow
             label="Esync"
             hint="Faster synchronization. Try off if a game hangs."
             checked={opts.esync}
+            busy={savingKeys.esync}
             onChange={(v) => patchOption("esync", v)}
           />
           <ToggleRow
             label="Debug logging"
             hint="Wine warnings/fixmes to the log. Slower — for troubleshooting."
             checked={opts.debugLogging}
+            busy={savingKeys.debugLogging}
             onChange={(v) => patchOption("debugLogging", v)}
           />
         </div>
