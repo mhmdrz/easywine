@@ -2,7 +2,7 @@ import { useState } from "react";
 import Icon from "./Icon";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import type { WineArch, WineConfig } from "@shared/wine";
-import "./CreateConfigModal.scss";
+import "../styles/CreateConfigModal.scss";
 
 interface CreateGameInstanceModalProps {
   onClose: () => void;

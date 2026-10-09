@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import Icon from "./Icon";
 import LibraryTips from "./LibraryTips";
 import type { CxwineStatus, LibTips } from "@shared/wine";
-import "./CxwineSetup.scss";
+import "../styles/CxwineSetup.scss";
 
 const CROSSOVER_URL = "https://www.codeweavers.com/crossover/source";
 const GPTK_URL = "https://developer.apple.com/games/game-porting-toolkit/";
@@ -31,13 +31,18 @@ function Step({ index, title, done, children }: StepProps): React.JSX.Element {
 interface CxwineSetupProps {
   /** Notified whenever the build status changes (e.g. a build is imported). */
   onStatusChange?: (status: CxwineStatus) => void;
+  /** Render the System libraries panel at the end (default true). */
+  showLibTips?: boolean;
 }
 
 /**
  * The built-in CrossOver + D3DMetal compiler flow: download sources, import
  * them, compile with the helper script, and detect the finished build.
  */
-function CxwineSetup({ onStatusChange }: CxwineSetupProps): React.JSX.Element {
+function CxwineSetup({
+  onStatusChange,
+  showLibTips = true,
+}: CxwineSetupProps): React.JSX.Element {
   const [status, setStatus] = useState<CxwineStatus | null>(null);
   const [libTips, setLibTips] = useState<LibTips | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -61,7 +66,10 @@ function CxwineSetup({ onStatusChange }: CxwineSetupProps): React.JSX.Element {
     window.easywine.app.openExternal(url);
   };
 
-  const act = async (key: string, fn: () => Promise<unknown>): Promise<void> => {
+  const act = async (
+    key: string,
+    fn: () => Promise<unknown>,
+  ): Promise<void> => {
     setBusy(key);
     setError(null);
     try {
@@ -76,6 +84,13 @@ function CxwineSetup({ onStatusChange }: CxwineSetupProps): React.JSX.Element {
 
   return (
     <>
+      {status?.buildReady && status?.redistReady && (
+        <div className="cx-ready mt-5">
+          <Icon name="rocket_launch" className="text-xl text-wine-light" />
+          <span>Your cxwine build is ready in the app folder.</span>
+        </div>
+      )}
+
       {error && (
         <div className="cx-error mt-5">
           <Icon name="error" className="text-lg text-red-400" />
@@ -219,14 +234,7 @@ function CxwineSetup({ onStatusChange }: CxwineSetupProps): React.JSX.Element {
         </Step>
       </div>
 
-      {status?.buildReady && status?.redistReady && (
-        <div className="cx-ready mt-6">
-          <Icon name="rocket_launch" className="text-xl text-wine-light" />
-          <span>Your D3DMetal Wine build is ready in the app folder.</span>
-        </div>
-      )}
-
-      <LibraryTips tips={libTips} />
+      {showLibTips && <LibraryTips tips={libTips} />}
     </>
   );
 }

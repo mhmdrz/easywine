@@ -3,7 +3,7 @@ import Icon from "./Icon";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import type { WineArch, WineConfig } from "@shared/wine";
 import { formatVersionId } from "../utils/format";
-import "./CreateConfigModal.scss";
+import "../styles/CreateConfigModal.scss";
 
 interface CreatePrefixModalProps {
   onClose: () => void;

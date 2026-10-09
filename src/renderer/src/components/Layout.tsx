@@ -4,7 +4,7 @@ import { CXWINE_VERSION_ID } from "@shared/wine";
 import type { WineConfig } from "@shared/wine";
 import Icon from "./Icon";
 import CreatePrefixModal from "./CreatePrefixModal";
-import "./Layout.scss";
+import "../styles/Layout.scss";
 
 interface NavItem {
   to: string;
@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 const TOOLBAR_NAV: NavItem[] = [
-  { to: "/downloads", label: "Downloads", icon: "download" },
+  { to: "/downloads", label: "Cores", icon: "deployed_code" },
   { to: "/settings", label: "Settings", icon: "settings" },
 ];
 

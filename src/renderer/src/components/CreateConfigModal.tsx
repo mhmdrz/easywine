@@ -2,7 +2,7 @@ import { useState } from "react";
 import Icon from "./Icon";
 import type { WineArch, WineConfig } from "@shared/wine";
 import { formatVersionId } from "../utils/format";
-import "./CreateConfigModal.scss";
+import "../styles/CreateConfigModal.scss";
 
 interface CreateConfigModalProps {
   installed: string[];

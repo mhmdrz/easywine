@@ -52,7 +52,7 @@ const SPECS: Spec[] = [
   },
   {
     name: "libxml2 / libxslt",
-    purpose: "XML (MSXML) parsing & transforms — provided by macOS",
+    purpose: "XML (MSXML) parsing & transforms - provided by macOS",
     source: "os",
   },
 ];

@@ -5,7 +5,7 @@ import type {
   WineChannel,
   WineVersion,
 } from "@shared/wine";
-import "./WineVersionCard.scss";
+import "../styles/WineVersionCard.scss";
 
 interface WineVersionCardProps {
   version: WineVersion;

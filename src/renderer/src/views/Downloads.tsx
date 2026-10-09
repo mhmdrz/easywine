@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Icon from "../components/Icon";
 import WineVersionCard from "../components/WineVersionCard";
-import CxwineSetup from "../components/CxwineSetup";
+import CxwineCore from "../components/CxwineCore";
 import { useDownloads } from "../context/DownloadsProvider";
 import type { WineVersion } from "@shared/wine";
-import "./Downloads.scss";
+import "../styles/Downloads.scss";
 
 type MajorFilter = number | "all";
 type Tab = "wine" | "cxwine";
@@ -77,11 +77,11 @@ function Downloads(): React.JSX.Element {
     <section>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-wine-light">Downloads</h1>
+          <h1 className="text-2xl font-bold text-wine-light">Cores</h1>
           <p className="mt-1 text-neutral-400">
             {tab === "wine"
               ? "All Wine releases from WineHQ. Filter by major version and download the build you need."
-              : "Build a custom CrossOver + D3DMetal (cxwine) Wine for game-exclusive prefixes."}
+              : "Download a prebuilt CrossOver + D3DMetal (cxwine) build, or compile your own."}
           </p>
         </div>
         {tab === "wine" && (
@@ -180,7 +180,7 @@ function Downloads(): React.JSX.Element {
           )}
         </>
       ) : (
-        <CxwineSetup />
+        <CxwineCore />
       )}
     </section>
   );

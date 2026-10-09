@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import type { InstalledApp } from "@shared/wine";
-import "./CreateConfigModal.scss";
+import "../styles/CreateConfigModal.scss";
 
 interface LaunchOptionsModalProps {
   instance: string;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import type { GameOptions, GraphicsBackend, GraphicsInfo } from "@shared/wine";
-import "./CreateConfigModal.scss";
+import "../styles/CreateConfigModal.scss";
 
 const RESOLUTIONS = [
   "1280x720",
