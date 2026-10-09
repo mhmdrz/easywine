@@ -37,4 +37,72 @@
     @apply pointer-events-none absolute right-3 top-1/2 -translate-y-1/2;
     color: rgba($text, 0.6);
   }
+
+  &__segment {
+    @apply grid grid-cols-2 gap-1.5;
+  }
+
+  &__segment-btn {
+    @apply flex flex-col items-start gap-1 rounded-lg p-3 text-left;
+    background-color: $color-gray-800;
+    border: 1px solid $border;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+
+    &:hover {
+      border-color: rgba($color-accent, 0.6);
+    }
+
+    &.active {
+      border-color: $color-accent;
+      background-color: rgba($color-accent, 0.12);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+  }
+
+  &__segment-title {
+    @apply flex items-center gap-1.5 text-sm font-semibold;
+    color: $text;
+  }
+
+  &__segment-desc {
+    @apply text-xs;
+    color: rgba($text, 0.55);
+  }
+
+  /* Icon picker grid */
+  &__icons {
+    @apply grid gap-1.5;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  &__icon-btn {
+    @apply flex items-center justify-center rounded-lg;
+    aspect-ratio: 1;
+    background-color: $color-gray-800;
+    color: rgba($text, 0.7);
+    border: 1px solid $border;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      color 0.15s ease,
+      background-color 0.15s ease;
+
+    &:hover {
+      color: $text;
+      border-color: rgba($color-accent, 0.6);
+    }
+
+    &.active {
+      border-color: $color-accent;
+      background-color: rgba($color-accent, 0.15);
+      color: $color-accent;
+    }
+  }
 }

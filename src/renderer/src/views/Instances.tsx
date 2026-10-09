@@ -74,7 +74,11 @@ function Instances(): React.JSX.Element {
           {configs.map((config) => (
             <div key={config.name} className="card flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <Icon name="folder" filled className="text-xl text-wine-accent" />
+                <Icon
+                  name={config.icon ?? "folder"}
+                  filled
+                  className="text-xl text-wine-accent"
+                />
                 <h3 className="min-w-0 flex-1 truncate text-lg font-semibold text-wine-light">
                   {config.name}
                 </h3>

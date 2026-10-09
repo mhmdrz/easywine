@@ -1,8 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type {
-  CxwineRelease,
-  CxwineReleaseProgress,
   CxwineStatus,
   DxvkStatus,
   GameOptions,
@@ -71,31 +69,6 @@ export const api = {
       ipcRenderer.invoke("cxwine:open-compiler"),
     /** System libraries the build needs: bundled / OS / Homebrew status. */
     libTips: (): Promise<LibTips> => ipcRenderer.invoke("cxwine:lib-tips"),
-    /** Compiled cxwine builds published on the public GitHub repo. */
-    releases: (): Promise<CxwineRelease[]> =>
-      ipcRenderer.invoke("cxwine:releases"),
-    /** The release tag currently installed as the active cxwine build. */
-    installedTag: (): Promise<string | null> =>
-      ipcRenderer.invoke("cxwine:installed-tag"),
-    /** In-flight cxwine build download, so the UI can rehydrate after navigation. */
-    activeReleaseDownload: (): Promise<CxwineReleaseProgress | null> =>
-      ipcRenderer.invoke("cxwine:active-release-download"),
-    /** Download + install a cxwine build release as the active build. */
-    downloadRelease: (release: CxwineRelease): Promise<void> =>
-      ipcRenderer.invoke("cxwine:download-release", release),
-    /** Subscribe to cxwine build download progress; returns an unsubscribe fn. */
-    onReleaseProgress: (
-      callback: (data: CxwineReleaseProgress) => void,
-    ): (() => void) => {
-      const handler = (
-        _event: IpcRendererEvent,
-        data: CxwineReleaseProgress,
-      ): void => callback(data);
-      ipcRenderer.on("cxwine:release-progress", handler);
-      return () => {
-        ipcRenderer.removeListener("cxwine:release-progress", handler);
-      };
-    },
   },
   wine: {
     /** Full catalog scraped from WineHQ (cached). */
@@ -154,8 +127,9 @@ export const api = {
       name: string,
       wineVersion: string,
       arch: WineArch,
+      icon?: string,
     ): Promise<WineConfig> =>
-      ipcRenderer.invoke("config:create", name, wineVersion, arch),
+      ipcRenderer.invoke("config:create", name, wineVersion, arch, icon),
     delete: (name: string): Promise<void> =>
       ipcRenderer.invoke("config:delete", name),
     setMetalHud: (name: string, enabled: boolean): Promise<void> =>

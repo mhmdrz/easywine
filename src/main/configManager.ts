@@ -112,10 +112,20 @@ function initPrefix(
       stderr += chunk.toString();
     });
     child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else
+    child.on("close", (code, signal) => {
+      if (code === 0) {
+        resolve();
+      } else if (signal) {
+        reject(
+          new Error(
+            `wineboot crashed (signal ${signal}) — the Wine build is likely ` +
+              `incompatible or broken on this system.` +
+              (stderr.trim() ? ` ${stderr.trim()}` : ""),
+          ),
+        );
+      } else {
         reject(new Error(`wineboot failed (code ${code}): ${stderr.trim()}`));
+      }
     });
   });
 }
@@ -224,6 +234,7 @@ export async function createConfig(
   name: string,
   wineVersion: string,
   arch: WineArch,
+  icon?: string,
 ): Promise<WineConfig> {
   const trimmed = name.trim();
   if (!NAME_RE.test(trimmed)) {
@@ -298,6 +309,7 @@ export async function createConfig(
     wineVersion,
     arch,
     createdAt: new Date().toISOString(),
+    ...(icon ? { icon } : {}),
     ...(isGame
       ? { graphicsBackend: "d3dmetal" as const, dpi: DEFAULT_GAME_DPI }
       : {}),

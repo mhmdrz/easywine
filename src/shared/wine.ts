@@ -22,6 +22,7 @@ export interface WineConfig {
   wineVersion: string;
   arch: WineArch;
   createdAt: string;
+  icon?: string;
   graphicsBackend?: GraphicsBackend;
   metalHud?: boolean;
   metalFx?: boolean;
@@ -91,21 +92,6 @@ export interface CxwineStatus {
   sourceReady: boolean;
   buildReady: boolean;
   redistReady: boolean;
-}
-
-export interface CxwineRelease {
-  id: string;
-  tag: string;
-  name: string;
-  url: string;
-  size: string;
-  publishedAt?: string;
-}
-
-export interface CxwineReleaseProgress {
-  id: string;
-  stage: DownloadStage;
-  progress: number;
 }
 
 export type LibSource = "bundled" | "os" | "brew";

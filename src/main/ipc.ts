@@ -34,13 +34,6 @@ import {
   importCxwineSource,
   openCxwineCompiler,
 } from "./cxwine";
-import {
-  downloadCxwineRelease,
-  getActiveCxwineDownload,
-  installedCxwineTag,
-  listCxwineReleases,
-} from "./cxwineReleases";
-import type { CxwineRelease } from "@shared/wine";
 import { checkLatestDxvk, downloadDxvk, getDxvkStatus } from "./dxvk";
 import { installRuntime, type RuntimeKind } from "./prefixRuntime";
 import { getLibTips } from "./libTips";
@@ -92,8 +85,8 @@ export function registerIpc(): void {
   );
   ipcMain.handle(
     "config:create",
-    (_event, name: string, wineVersion: string, arch: WineArch) =>
-      createConfig(name, wineVersion, arch),
+    (_event, name: string, wineVersion: string, arch: WineArch, icon?: string) =>
+      createConfig(name, wineVersion, arch, icon),
   );
   ipcMain.handle("config:delete", (_event, name: string) => deleteConfig(name));
   ipcMain.handle(
@@ -138,24 +131,6 @@ export function registerIpc(): void {
   ipcMain.handle("cxwine:import-build", () => importCxwineBuild());
   ipcMain.handle("cxwine:open-compiler", () => openCxwineCompiler());
   ipcMain.handle("cxwine:lib-tips", () => getLibTips());
-
-  ipcMain.handle("cxwine:releases", () => listCxwineReleases());
-  ipcMain.handle("cxwine:installed-tag", () => installedCxwineTag());
-  ipcMain.handle("cxwine:active-release-download", () =>
-    getActiveCxwineDownload(),
-  );
-  ipcMain.handle(
-    "cxwine:download-release",
-    async (event, release: CxwineRelease) => {
-      await downloadCxwineRelease(release, (stage, progress) => {
-        event.sender.send("cxwine:release-progress", {
-          id: release.id,
-          stage,
-          progress,
-        });
-      });
-    },
-  );
   ipcMain.handle("app:open-external", (_event, url: string) => {
     if (/^https:\/\//i.test(url)) return shell.openExternal(url);
     return Promise.resolve();

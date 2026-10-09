@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { CXWINE_VERSION_ID } from "@shared/wine";
 import type { WineConfig } from "@shared/wine";
 import Icon from "./Icon";
+import CreatePrefixModal from "./CreatePrefixModal";
 import "./Layout.scss";
 
 interface NavItem {
@@ -60,7 +61,9 @@ function Layout(): React.JSX.Element {
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
   });
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const activeTo = useActiveNav();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const activeInstanceMatch = pathname.match(/^\/instance\/([^/]+)/);
   const activeInstance = activeInstanceMatch
@@ -69,6 +72,10 @@ function Layout(): React.JSX.Element {
 
   useEffect(() => {
     window.easywine.app.version().then(setVersion);
+  }, []);
+
+  const refreshPrefixes = useCallback((): void => {
+    window.easywine.config.list().then(setPrefixes);
   }, []);
 
   useEffect(() => {
@@ -124,7 +131,9 @@ function Layout(): React.JSX.Element {
                     }
                   >
                     <Icon
-                      name={isCxwine ? "sports_esports" : "wine_bar"}
+                      name={
+                        prefix.icon ?? (isCxwine ? "sports_esports" : "wine_bar")
+                      }
                       className="sidebar__item-icon"
                     />
                     <span className="sidebar__item-label">{prefix.name}</span>
@@ -170,6 +179,15 @@ function Layout(): React.JSX.Element {
             </div>
           </div>
           <div className="toolbar__actions">
+            <button
+              type="button"
+              className="toolbar__action"
+              title="New prefix"
+              aria-label="New prefix"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Icon name="add" className="text-xl" />
+            </button>
             {TOOLBAR_NAV.map((item) => (
               <NavLink
                 key={item.to}
@@ -191,6 +209,16 @@ function Layout(): React.JSX.Element {
           <Outlet />
         </main>
       </div>
+
+      {createOpen && (
+        <CreatePrefixModal
+          onClose={() => setCreateOpen(false)}
+          onCreated={(config) => {
+            refreshPrefixes();
+            navigate(`/instance/${encodeURIComponent(config.name)}`);
+          }}
+        />
+      )}
     </div>
   );
 }

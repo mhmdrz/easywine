@@ -176,51 +176,15 @@ export async function importCxwineBuild(): Promise<{ imported: boolean }> {
     );
   }
 
-  await installCxwineBuildFromDir(source, { move: false });
-
-  return { imported: true };
-}
-
-export async function findCxwineBuildRoot(
-  root: string,
-  maxDepth = 3,
-): Promise<string | null> {
-  const queue: Array<{ dir: string; depth: number }> = [
-    { dir: root, depth: 0 },
-  ];
-  while (queue.length > 0) {
-    const { dir, depth } = queue.shift()!;
-    if (await hasWineBuild(dir)) return dir;
-    if (depth >= maxDepth) continue;
-    const entries = await fsp
-      .readdir(dir, { withFileTypes: true })
-      .catch(() => []);
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        queue.push({ dir: join(dir, entry.name), depth: depth + 1 });
-      }
-    }
-  }
-  return null;
-}
-
-export async function installCxwineBuildFromDir(
-  source: string,
-  opts: { move?: boolean } = {},
-): Promise<void> {
   const build = cxwineBuildDir();
   await fsp.rm(build, { recursive: true, force: true, maxRetries: 3 });
-  await fsp.mkdir(join(build, ".."), { recursive: true });
-
-  if (opts.move) {
-    await fsp.rename(source, build);
-  } else {
-    await fsp.mkdir(build, { recursive: true });
-    await run("ditto", [source, build]);
-  }
+  await fsp.mkdir(build, { recursive: true });
+  await run("ditto", [source, build]);
 
   await fixMoltenVkIcd(build);
   await bundleExternalLibs(build).catch(() => ({ bundled: [] }));
+
+  return { imported: true };
 }
 
 async function fixMoltenVkIcd(build: string): Promise<void> {
