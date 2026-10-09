@@ -38,8 +38,12 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     show: false,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#00000000",
     title: "EasyWine",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 18, y: 18 },
+    vibrancy: "sidebar",
+    visualEffectState: "active",
     webPreferences: {
       preload: join(__dirname, "../preload/index.mjs"),
       sandbox: false,

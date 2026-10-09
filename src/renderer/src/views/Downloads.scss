@@ -1,5 +1,31 @@
 @use "../styles/variables" as *;
 
+.tabs {
+  border-bottom: 1px solid $border;
+}
+
+.tab {
+  @apply inline-flex items-center gap-2 rounded-t-lg px-4 py-2 text-sm font-semibold;
+  color: rgba($text, 0.6);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+
+  &:hover {
+    color: $color-light;
+    background-color: rgba($color-light, 0.04);
+  }
+
+  &--active {
+    color: $color-light;
+    border-bottom-color: $color-accent;
+  }
+}
+
 .chip {
   @apply rounded-full px-3 py-1 text-sm font-medium;
   background-color: $color-gray-800;

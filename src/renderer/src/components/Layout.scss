@@ -1,63 +1,227 @@
 @use "../styles/variables" as *;
 
+$sidebar-width: 240px;
+$titlebar-height: 52px;
+$ease: cubic-bezier(0.32, 0.72, 0, 1);
+
 .app-layout {
-  @apply flex min-h-screen;
+  @apply flex h-screen overflow-hidden;
 }
 
 .sidebar {
-  @apply flex flex-col gap-2 p-3;
-  width: 220px;
-  flex-shrink: 0;
-  background-color: $color-gray-900;
-  border-right: 1px solid $border;
+  @apply flex flex-col flex-shrink-0 overflow-hidden;
+  width: $sidebar-width;
+  min-width: $sidebar-width;
+  background-color: rgba($color-black, 0.12);
+  border-right: 1px solid rgba($color-light, 0.08);
+  transition:
+    width 0.32s $ease,
+    min-width 0.32s $ease,
+    opacity 0.24s ease,
+    transform 0.32s $ease;
 
-  &__brand {
-    @apply flex items-center gap-2 px-2 py-3 text-lg font-bold;
-    color: $color-light;
+  &__titlebar {
+    height: $titlebar-height;
+    flex-shrink: 0;
+    -webkit-app-region: drag;
+  }
+
+  &__nav {
+    @apply flex flex-col gap-0.5 px-3 pt-1;
+  }
+
+  &__section {
+    @apply flex flex-col px-3 pt-4;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  &__section-title {
+    @apply px-2.5 pb-1 text-xs font-semibold uppercase;
+    letter-spacing: 0.06em;
+    color: rgba($color-light, 0.4);
+  }
+
+  &__list {
+    @apply flex flex-col gap-0.5;
+  }
+
+  &__item {
+    @apply flex items-center gap-2 rounded-md px-2.5 py-1 text-sm font-medium;
+    color: rgba($color-light, 0.72);
+    white-space: nowrap;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+
+    &:hover {
+      background-color: rgba($color-light, 0.07);
+      color: $color-light;
+    }
+
+    &.active {
+      background-color: rgba($color-primary, 0.9);
+      color: #fff;
+
+      .sidebar__item-icon {
+        color: #fff;
+      }
+    }
+  }
+
+  &__item-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    color: rgba($color-light, 0.5);
+  }
+
+  &__item-label {
+    @apply truncate;
+  }
+
+  &__empty {
+    @apply px-2.5 py-1 text-xs;
+    color: rgba($color-light, 0.35);
   }
 
   &__footer {
-    @apply mt-auto flex items-center justify-between gap-2 px-2 py-2;
+    @apply flex items-center justify-between gap-2 px-4 py-3;
   }
 
   &__version {
     @apply text-xs font-medium;
-    color: rgba($color-light, 0.4);
+    color: rgba($color-light, 0.35);
   }
 
   &__github {
     @apply flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium;
+    color: rgba($color-light, 0.5);
+    -webkit-app-region: no-drag;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+
+    &:hover {
+      background-color: rgba($color-light, 0.08);
+      color: $color-light;
+    }
+  }
+}
+
+.app-layout--collapsed .sidebar {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  transform: translateX(-8px);
+  border-right-color: transparent;
+  pointer-events: none;
+}
+
+.nav-link {
+  @apply flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium;
+  color: rgba($color-light, 0.82);
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  &__icon {
+    font-size: 20px;
+    color: rgba($color-light, 0.6);
+    transition: color 0.15s ease;
+  }
+
+  &:hover {
+    background-color: rgba($color-light, 0.07);
+  }
+
+  &.active {
+    background-color: $color-primary;
+    color: #fff;
+
+    .nav-link__icon {
+      color: #fff;
+    }
+  }
+}
+
+.main {
+  @apply flex flex-1 flex-col overflow-hidden;
+  background-color: $bg;
+}
+
+.toolbar {
+  @apply flex items-center justify-between;
+  height: $titlebar-height;
+  flex-shrink: 0;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba($color-light, 0.07);
+  -webkit-app-region: drag;
+  transition: padding-left 0.32s $ease;
+
+  &__leading {
+    @apply flex items-center gap-2;
+    min-width: 0;
+  }
+
+  &__toggle {
+    @apply inline-flex items-center justify-center rounded-md flex-shrink-0;
+    width: 30px;
+    height: 28px;
+    color: rgba($color-light, 0.6);
+    -webkit-app-region: no-drag;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+
+    &:hover {
+      background-color: rgba($color-light, 0.08);
+      color: $color-light;
+    }
+  }
+
+  &__brand {
+    @apply flex items-center gap-1.5 text-sm font-semibold;
+    color: rgba($color-light, 0.92);
+    white-space: nowrap;
+  }
+
+  &__brand-icon {
+    color: $color-accent;
+    font-size: 20px;
+  }
+
+  &__actions {
+    @apply flex items-center gap-1 flex-shrink-0;
+    -webkit-app-region: no-drag;
+  }
+
+  &__action {
+    @apply inline-flex items-center justify-center rounded-md;
+    width: 32px;
+    height: 28px;
     color: rgba($color-light, 0.55);
     transition:
       background-color 0.15s ease,
       color 0.15s ease;
 
     &:hover {
-      background-color: $color-gray-800;
+      background-color: rgba($color-light, 0.08);
       color: $color-light;
+    }
+
+    &.active {
+      background-color: $color-primary;
+      color: #fff;
     }
   }
 }
 
-.nav-link {
-  @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium;
-  color: rgba($color-light, 0.7);
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-
-  &:hover {
-    background-color: $color-gray-800;
-    color: $color-light;
-  }
-
-  &.active {
-    background-color: $color-primary;
-    color: $color-light;
-  }
+.app-layout--collapsed .toolbar {
+  padding-left: 84px;
 }
 
 .content {
   @apply flex-1 overflow-auto p-8;
-  background-color: $bg;
 }

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { CXWINE_VERSION_ID } from "@shared/wine";
+import type { WineConfig } from "@shared/wine";
 import Icon from "./Icon";
 import "./Layout.scss";
 
@@ -11,14 +12,13 @@ interface NavItem {
   end?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { to: "/game-exclusive", label: "Game exclusive", icon: "sports_esports" },
-  { to: "/", label: "Instances", icon: "folder", end: true },
+const TOOLBAR_NAV: NavItem[] = [
   { to: "/downloads", label: "Downloads", icon: "download" },
   { to: "/settings", label: "Settings", icon: "settings" },
 ];
 
 const GITHUB_URL = "https://github.com/mhmdrz/easywine";
+const SIDEBAR_STORAGE_KEY = "easywine.sidebar.collapsed";
 
 function useActiveNav(): string {
   const { pathname } = useLocation();
@@ -55,34 +55,85 @@ function useActiveNav(): string {
 
 function Layout(): React.JSX.Element {
   const [version, setVersion] = useState("");
+  const [prefixes, setPrefixes] = useState<WineConfig[]>([]);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+  });
+  const { pathname } = useLocation();
   const activeTo = useActiveNav();
+
+  const activeInstanceMatch = pathname.match(/^\/instance\/([^/]+)/);
+  const activeInstance = activeInstanceMatch
+    ? decodeURIComponent(activeInstanceMatch[1])
+    : null;
 
   useEffect(() => {
     window.easywine.app.version().then(setVersion);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    window.easywine.config.list().then((list) => {
+      if (!cancelled) setPrefixes(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const toggleSidebar = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.metaKey && event.ctrlKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleSidebar]);
+
   return (
-    <div className="app-layout">
+    <div className={`app-layout${collapsed ? " app-layout--collapsed" : ""}`}>
       <aside className="sidebar">
-        <div className="sidebar__brand">
-          <span className="text-2xl" aria-hidden="true">
-            🍷
-          </span>
-          <span>EasyWine</span>
+        <div className="sidebar__titlebar" />
+        <div className="sidebar__section">
+          <div className="sidebar__section-title">Prefixes</div>
+          <nav className="sidebar__list">
+            {prefixes.length === 0 ? (
+              <span className="sidebar__empty">No prefixes yet</span>
+            ) : (
+              prefixes.map((prefix) => {
+                const isCxwine = prefix.wineVersion === CXWINE_VERSION_ID;
+                return (
+                  <NavLink
+                    key={prefix.name}
+                    to={`/instance/${encodeURIComponent(prefix.name)}`}
+                    title={prefix.name}
+                    className={
+                      prefix.name === activeInstance
+                        ? "sidebar__item active"
+                        : "sidebar__item"
+                    }
+                  >
+                    <Icon
+                      name={isCxwine ? "sports_esports" : "wine_bar"}
+                      className="sidebar__item-icon"
+                    />
+                    <span className="sidebar__item-label">{prefix.name}</span>
+                  </NavLink>
+                );
+              })
+            )}
+          </nav>
         </div>
-        <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={item.to === activeTo ? "nav-link active" : "nav-link"}
-            >
-              <Icon name={item.icon} className="text-xl" />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
         <div className="sidebar__footer">
           <span className="sidebar__version">
             {version ? `v${version}` : ""}
@@ -94,14 +145,52 @@ function Layout(): React.JSX.Element {
             aria-label="View on GitHub"
             onClick={() => window.easywine.app.openExternal(GITHUB_URL)}
           >
-            <Icon name="code" className="text-lg" />
+            <Icon name="code" className="text-base" />
             GitHub
           </button>
         </div>
       </aside>
-      <main className="content">
-        <Outlet />
-      </main>
+      <div className="main">
+        <header className="toolbar">
+          <div className="toolbar__leading">
+            <button
+              type="button"
+              className="toolbar__toggle"
+              onClick={toggleSidebar}
+              title={collapsed ? "Show Sidebar (⌃⌘S)" : "Hide Sidebar (⌃⌘S)"}
+              aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
+            >
+              <Icon
+                name={collapsed ? "dock_to_right" : "left_panel_close"}
+                className="text-xl"
+              />
+            </button>
+            <div className="toolbar__brand">
+              <span>EasyWine</span>
+            </div>
+          </div>
+          <div className="toolbar__actions">
+            {TOOLBAR_NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                title={item.label}
+                aria-label={item.label}
+                className={
+                  item.to === activeTo
+                    ? "toolbar__action active"
+                    : "toolbar__action"
+                }
+              >
+                <Icon name={item.icon} className="text-xl" />
+              </NavLink>
+            ))}
+          </div>
+        </header>
+        <main className="content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -38,7 +38,7 @@ function Instances(): React.JSX.Element {
 
   const handleDelete = async (name: string): Promise<void> => {
     const ok = window.confirm(
-      `Delete instance “${name}”? This permanently removes its Wine prefix and all installed apps.`,
+      `Delete prefix “${name}”? This permanently removes its Wine prefix and all installed apps.`,
     );
     if (!ok) return;
     setDeleting(name);
@@ -54,7 +54,7 @@ function Instances(): React.JSX.Element {
     <section>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-wine-light">Instances</h1>
+          <h1 className="text-2xl font-bold text-wine-light">Prefixes</h1>
           <p className="mt-1 text-neutral-400">
             Create and manage your Wine prefixes and their settings.
           </p>
@@ -67,7 +67,7 @@ function Instances(): React.JSX.Element {
 
       {configs.length === 0 ? (
         <p className="mt-6 text-neutral-500">
-          No instances yet — click “Add” to create your first Wine prefix.
+          No prefixes yet — click “Add” to create your first Wine prefix.
         </p>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
